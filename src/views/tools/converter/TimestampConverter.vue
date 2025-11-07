@@ -179,18 +179,20 @@
 import { storeToRefs } from 'pinia';
 import { useTimestampConverterStore } from '@/store/modules/tools/converter/TimestampConverter.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'TimestampConverterPage',
   meta: {
     tool: {
       id: 'timestamp-converter',
-      name: '时间戳转换',
-      description: '在时间戳和日期时间之间进行转换，支持秒和毫秒两种时间戳格式',
-      category: 'converter',
-      icon: 'clock',
-      tags: ['时间戳', '日期', '时间', '转换'],
-      keywords: ['timestamp', 'date', 'time', 'convert', 'unix', '时间戳', '日期转换']
+      name: '时间戳转换器',
+      description: '时间戳和日期时间相互转换工具，支持多种时间格式和时区设置',
+      icon: '🛠️',
+      category: 'utility',
+      tags: ['时间戳', '日期', '时间', '转换', '时区', '实用工具'],
+      enabled: true,
+      isPopular: true,
+      order: 1
     }
   }
 });

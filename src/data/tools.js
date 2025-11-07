@@ -27,84 +27,77 @@
 // 此文件现在仅用于导出工具分类配置
 // 所有工具配置已迁移到各自的组件中
 
-// 工具分类配置 - 保留集中配置，因为分类相对稳定
+// 工具分类配置 - 10个边界清晰的固定分类体系
 export const toolCategories = [
   {
     id: 'encoding',
-    name: '编码转换',
-    icon: '🔄',
-    description: '各种编码格式转换工具',
+    name: '编码解码',
+    icon: '🔤',
+    description: '字符编码、URL编码、Base64等编码解码工具',
     order: 1
   },
   {
     id: 'crypto',
-    name: '加密解密',
+    name: '加密安全',
     icon: '🔐',
-    description: '各种加密解密算法工具',
+    description: '加密解密、哈希计算、数字签名等安全工具',
     order: 2
   },
   {
-    id: 'hash',
-    name: '哈希计算',
-    icon: '#️⃣',
-    description: '各种哈希算法计算工具',
+    id: 'data',
+    name: '数据处理',
+    icon: '📊',
+    description: '数据格式转换、验证、清洗和格式化工具',
     order: 3
   },
   {
-    id: 'converter',
-    name: '格式转换',
-    icon: '🔀',
-    description: '各种数据格式转换工具',
-    order: 4
-  },
-  {
-    id: 'ctf',
-    name: 'CTF工具',
-    icon: '🎯',
-    description: 'CTF竞赛常用工具',
-    order: 5
-  },
-  {
     id: 'text',
-    name: '文本处理',
+    name: '文本编辑',
     icon: '📝',
-    description: '文本处理相关工具',
-    order: 6
+    description: '文本处理、格式化、统计和转换工具',
+    order: 4
   },
   {
     id: 'network',
     name: '网络工具',
     icon: '🌐',
-    description: '网络相关工具',
-    order: 7
+    description: '网络诊断、API测试、端口扫描等网络相关工具',
+    order: 5
   },
   {
-    id: 'frontend',
-    name: '前端工具',
-    icon: '🎨',
-    description: '前端开发常用工具',
-    order: 8
-  },
-  {
-    id: 'test',
-    name: '测试工具',
-    icon: '🧪',
-    description: '开发和测试相关工具',
-    order: 9
+    id: 'developer',
+    name: '开发工具',
+    icon: '💻',
+    description: '前端开发、代码格式化、正则表达式等开发工具',
+    order: 6
   },
   {
     id: 'generator',
-    name: '生成器',
+    name: '内容生成',
     icon: '🎲',
-    description: '各种内容生成工具',
-    order: 10
+    description: '密码、颜色、二维码、UUID等内容生成工具',
+    order: 7
   },
   {
-    id: 'tester',
-    name: '测试工具',
-    icon: '🧪',
-    description: '各种测试和验证工具',
-    order: 11
+    id: 'ctf',
+    name: 'CTF工具',
+    icon: '🎯',
+    description: 'CTF竞赛专用工具，如密码学、隐写术等',
+    order: 8
+  },
+  {
+    id: 'utility',
+    name: '实用工具',
+    icon: '🛠️',
+    description: '时间戳转换、单位换算等日常实用工具',
+    order: 9
+  },
+  {
+    id: 'analysis',
+    name: '分析工具',
+    icon: '🔍',
+    description: '数据统计、性能分析、日志分析等分析工具',
+    order: 10
   }
 ];
 

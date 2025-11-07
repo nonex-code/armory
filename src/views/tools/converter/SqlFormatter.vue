@@ -158,18 +158,20 @@
 import { storeToRefs } from 'pinia';
 import { useSqlFormatterStore } from '@/store/modules/tools/converter/SqlFormatter.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'SqlFormatterPage',
   meta: {
     tool: {
       id: 'sql-formatter',
-      name: 'SQL格式化',
-      description: '格式化和美化SQL语句，使其更易读和维护，支持多种格式化选项',
-      category: 'converter',
-      icon: 'database',
-      tags: ['SQL', '格式化', '数据库', '美化'],
-      keywords: ['sql', 'formatter', 'database', 'format', 'sql格式化']
+      name: 'SQL格式化工具',
+      description: 'SQL语句格式化和美化工具，支持SQL代码的缩进、语法高亮和优化建议',
+      icon: '💻',
+      category: 'developer',
+      tags: ['sql', '格式化', '美化', '数据库', '查询', '开发工具'],
+      enabled: true,
+      isPopular: true,
+      order: 4
     }
   }
 });

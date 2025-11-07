@@ -230,18 +230,20 @@ import { useRegexTesterStore } from '@/store/modules/tools/tester/RegexTester.js
 import { useToast } from '@/composables/useToast.js';
 import toolService from '@/services/toolService.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'RegexTesterPage',
   meta: {
     tool: {
       id: 'regex-tester',
-      name: '正则表达式测试',
-      description: '强大的正则表达式测试工具，支持实时测试、高亮显示、分组捕获和常用正则表达式预设',
-      category: 'tester',
-      icon: 'regex',
-      tags: ['正则', '测试', '调试', '匹配'],
-      keywords: ['正则表达式', 'regex', '模式匹配', '文本处理', '字符串匹配']
+      name: '正则表达式测试器',
+      description: '正则表达式测试和调试工具，支持实时匹配测试和分组捕获',
+      icon: '💻',
+      category: 'developer',
+      tags: ['regex', '正则', '测试', '匹配', '调试', '开发工具'],
+      enabled: true,
+      isPopular: true,
+      order: 2
     }
   }
 });

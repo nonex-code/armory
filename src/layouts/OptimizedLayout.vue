@@ -201,7 +201,10 @@ watch(searchQuery, searchTools);
         <div class="flex items-center justify-between">
           <!-- Logo和主导航 -->
           <div class="flex items-center space-x-2 lg:space-x-4">
-            <div class="flex items-center space-x-2">
+            <div 
+              class="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+              @click="router.push('/')"
+            >
               <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-content font-bold shadow-lg">
                 W
               </div>
@@ -209,29 +212,15 @@ watch(searchQuery, searchTools);
             </div>
             
             <!-- 主导航菜单 - 桌面端 -->
-            <nav class="hidden lg:flex items-center space-x-0.5">
-              <ul class="flex items-center space-x-0.5">
-                <!-- 首页 -->
-                <li>
-                  <router-link 
-                    to="/" 
-                    class="flex items-center px-2 py-1.5 rounded-md transition-all duration-200 group"
-                    :class="{ 
-                      'bg-primary text-primary-content shadow-sm': $route.path === '/',
-                      'hover:bg-base-300/70': $route.path !== '/'
-                    }"
-                  >
-                    <span class="text-base transition-transform duration-200 group-hover:scale-110">🏠</span>
-                    <span class="ml-1 text-sm font-medium">首页</span>
-                  </router-link>
-                </li>
+            <nav class="hidden lg:flex items-center space-x-0">
+              <ul class="flex items-center space-x-0">
                 
                 <!-- 工具分类下拉菜单 -->
                 <li class="relative" v-for="category in menuStore.getAllMenuItems" :key="category.id">
                   <div v-if="category.children && category.children.length > 0" class="relative">
                     <label 
                       tabindex="0" 
-                      class="flex items-center px-2 py-1.5 rounded-md transition-all duration-200 cursor-pointer group whitespace-nowrap"
+                      class="flex items-center px-1.5 py-1 rounded-md transition-all duration-200 cursor-pointer group whitespace-nowrap"
                       :class="{ 
                         'bg-primary text-primary-content shadow-sm': isCategoryActive(category),
                         'hover:bg-base-300/70': !isCategoryActive(category)
@@ -240,8 +229,8 @@ watch(searchQuery, searchTools);
                       @mouseleave="handleMouseLeaveTrigger"
                       @click="handleClickTrigger(category.id)"
                     >
-                      <span class="text-base transition-transform duration-200 group-hover:scale-110">{{ category.icon }}</span>
-                      <span class="ml-1 text-sm font-medium">{{ category.name }}</span>
+                      <span class="text-sm transition-transform duration-200 group-hover:scale-110">{{ category.icon }}</span>
+                      <span class="ml-1 text-xs font-medium">{{ category.name }}</span>
                       <BaseIcon 
                         name="chevron-down" 
                         custom-class="h-3 w-3 ml-0.5 transition-transform duration-200"

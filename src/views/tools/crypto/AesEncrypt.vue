@@ -255,18 +255,20 @@
 import { storeToRefs } from 'pinia';
 import { useAesEncryptStore } from '@/store/modules/tools/crypto/AesEncrypt.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'AesEncryptPage',
   meta: {
     tool: {
       id: 'aes-encrypt',
-      name: 'AES加密/解密',
-      description: '使用AES算法对文本进行加密和解密处理，支持多种密钥长度和模式',
+      name: 'AES加密工具',
+      description: 'AES对称加密工具，支持AES加密和解密操作，可设置密钥和加密模式',
+      icon: '🔒',
       category: 'crypto',
-      icon: 'lock-closed',
-      tags: ['AES', '加密', '解密', '安全'],
-      keywords: ['aes', 'encrypt', 'decrypt', 'security', 'crypto', 'aes加密', 'aes解密']
+      tags: ['aes', '加密', '解密', '对称', '安全'],
+      enabled: true,
+      isPopular: true,
+      order: 4
     }
   }
 });

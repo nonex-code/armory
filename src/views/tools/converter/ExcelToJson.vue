@@ -181,18 +181,20 @@
 import { storeToRefs } from 'pinia';
 import { useExcelToJsonStore } from '@/store/modules/tools/converter/ExcelToJson.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'ExcelToJsonPage',
   meta: {
     tool: {
-      id: 'excel-json',
-      name: 'Excel转JSON',
-      description: '将Excel文件中的数据转换为JSON格式，方便在Web应用中使用',
-      category: 'converter',
+      id: 'excel-to-json',
+      name: 'Excel转JSON工具',
+      description: 'Excel文件数据转换为JSON格式工具，支持Excel表格数据的提取和转换',
       icon: '📊',
-      tags: ['excel', 'json', '转换', '数据'],
-      keywords: ['excel', 'json', 'converter', 'data', '转换', '数据']
+      category: 'data',
+      tags: ['excel', 'json', '转换', '数据', '表格', '数据处理'],
+      enabled: true,
+      isPopular: true,
+      order: 5
     }
   }
 });

@@ -186,18 +186,20 @@ import { useQrCodeGeneratorStore } from '@/store/modules/tools/generator/QrCodeG
 import { useToast } from '@/composables/useToast';
 import toolService from '@/services/toolService';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'QrCodeGeneratorPage',
   meta: {
     tool: {
       id: 'qr-code-generator',
       name: '二维码生成器',
-      description: '将文本、网址等内容转换为二维码图像',
+      description: '二维码生成工具，支持文本、URL、联系方式等多种内容的二维码生成',
+      icon: '🎨',
       category: 'generator',
-      icon: 'qr-code',
-      tags: ['二维码', 'QR码', '图像生成', '网址转换', '文本转换'],
-      keywords: ['二维码生成器', 'QR码生成', '网址二维码', '文本二维码', '二维码下载']
+      tags: ['二维码', '生成', '扫描', 'url', '文本', '内容生成'],
+      enabled: true,
+      isPopular: true,
+      order: 1
     }
   }
 });

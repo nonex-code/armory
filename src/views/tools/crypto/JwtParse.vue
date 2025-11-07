@@ -186,18 +186,20 @@
 import { storeToRefs } from 'pinia';
 import { useJwtParseStore } from '@/store/modules/tools/crypto/JwtParse.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'JwtParsePage',
   meta: {
     tool: {
       id: 'jwt-parse',
-      name: 'JWT解析',
-      description: '解析JWT令牌，查看头部、载荷和签名信息，验证令牌有效性',
+      name: 'JWT解析器',
+      description: 'JWT令牌解析和验证工具，支持解析JWT头部、载荷和签名信息',
+      icon: '🔒',
       category: 'crypto',
-      icon: 'key',
-      tags: ['JWT', '解析', '令牌', '验证'],
-      keywords: ['jwt', 'parse', 'token', 'decode', 'jwt解析', '令牌解析']
+      tags: ['jwt', 'token', '解析', '验证', '安全'],
+      enabled: true,
+      isPopular: true,
+      order: 1
     }
   }
 });

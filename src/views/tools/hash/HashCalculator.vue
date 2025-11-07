@@ -242,18 +242,20 @@ import { useToast } from '@/composables/useToast.js';
 import toolService from '@/services/toolService.js';
 import BaseIcon from '@/components/BaseIcon.vue';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'HashCalculatorPage',
   meta: {
     tool: {
       id: 'hash-calculator',
       name: '哈希计算器',
-      description: '支持多种哈希算法的在线计算工具，可计算文本和文件的MD5、SHA-1、SHA-256、SHA-512等哈希值',
-      category: 'hash',
-      icon: 'hashtag',
-      tags: ['哈希', '加密', 'MD5', 'SHA', '文件校验'],
-      keywords: ['哈希计算', 'MD5计算', 'SHA计算', '文件哈希', '文本哈希', '加密工具']
+      description: '计算文本的多种哈希值，包括MD5、SHA-1、SHA-256、SHA-512等',
+      icon: '🔒',
+      category: 'crypto',
+      tags: ['hash', 'md5', 'sha1', 'sha256', 'sha512', '哈希', '加密'],
+      enabled: true,
+      isPopular: true,
+      order: 2
     }
   }
 });

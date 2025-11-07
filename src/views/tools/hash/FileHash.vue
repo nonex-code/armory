@@ -162,18 +162,20 @@ import { useToast } from '@/composables/useToast.js';
 import toolService from '@/services/toolService.js';
 import BaseIcon from '@/components/BaseIcon.vue';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'FileHashPage',
   meta: {
     tool: {
       id: 'file-hash',
-      name: '文件哈希计算',
-      description: '计算文件的MD5、SHA1、SHA256等多种哈希值，用于验证文件完整性和唯一性',
-      category: 'hash',
-      icon: 'document-text',
-      tags: ['文件哈希', 'MD5', 'SHA1', 'SHA256', '文件完整性', '验证'],
-      keywords: ['文件哈希计算', '文件校验', 'MD5计算', 'SHA计算', '文件完整性验证']
+      name: '文件哈希计算器',
+      description: '文件哈希值计算工具，支持计算文件的MD5、SHA-1、SHA-256等哈希值',
+      icon: '🔒',
+      category: 'crypto',
+      tags: ['文件', '哈希', 'md5', 'sha1', 'sha256', '校验', '安全'],
+      enabled: true,
+      isPopular: true,
+      order: 3
     }
   }
 });

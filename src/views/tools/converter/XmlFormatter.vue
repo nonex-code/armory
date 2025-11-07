@@ -187,18 +187,20 @@
 import { storeToRefs } from 'pinia';
 import { useXmlFormatterStore } from '@/store/modules/tools/converter/XmlFormatter.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'XmlFormatterPage',
   meta: {
     tool: {
       id: 'xml-formatter',
-      name: 'XML格式化',
-      description: '格式化和验证XML数据，使其更易读和维护，支持多种格式化选项',
-      category: 'converter',
-      icon: 'code-xml',
-      tags: ['XML', '格式化', '验证', '美化'],
-      keywords: ['xml', 'formatter', 'validator', 'format', 'xml格式化', 'xml验证']
+      name: 'XML格式化工具',
+      description: 'XML格式化和美化工具，支持XML代码的缩进、语法高亮和验证',
+      icon: '📊',
+      category: 'data',
+      tags: ['xml', '格式化', '美化', '缩进', '验证', '数据处理'],
+      enabled: true,
+      isPopular: true,
+      order: 2
     }
   }
 });

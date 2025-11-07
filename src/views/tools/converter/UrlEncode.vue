@@ -163,14 +163,14 @@ defineOptions({
   meta: {
     tool: {
       id: 'url-encode',
-      name: 'URL编码/解码',
-      description: '对URL进行编码和解码处理，支持UTF-8编码格式',
-      icon: '🔗',
-      category: 'converter',
+      name: 'URL编码工具',
+      description: 'URL编码和解码工具，支持URL参数和路径的编码转换',
+      icon: '🔤',
+      category: 'encoding',
       tags: ['url', '编码', '解码', '转换'],
       enabled: true,
-      isPopular: false,
-      order: 2
+      isPopular: true,
+      order: 5
     }
   }
 });

@@ -243,18 +243,20 @@ import { usePasswordGeneratorStore } from '@/store/modules/tools/generator/Passw
 import { useToast } from '@/composables/useToast';
 import toolService from '@/services/toolService';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'PasswordGeneratorPage',
   meta: {
     tool: {
       id: 'password-generator',
       name: '密码生成器',
-      description: '生成安全随机密码，支持自定义密码选项和强度分析',
+      description: '密码生成工具，支持生成安全、随机的密码，可自定义长度和字符类型',
+      icon: '🎨',
       category: 'generator',
-      icon: 'key',
-      tags: ['密码', '随机', '安全', '强度分析', '批量生成'],
-      keywords: ['密码生成器', '随机密码', '安全密码', '密码强度', '批量密码生成']
+      tags: ['密码', '生成', '安全', '随机', '强度', '内容生成'],
+      enabled: true,
+      isPopular: true,
+      order: 3
     }
   }
 });

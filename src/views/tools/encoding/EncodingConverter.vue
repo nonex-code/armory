@@ -219,7 +219,7 @@ defineOptions({
       id: 'encoding-converter',
       name: '编解码工具',
       description: '支持多种编码格式的编码和解码，包括Base64、Base32、URL编码和HTML实体编码',
-      icon: '🔄',
+      icon: '🔤',
       category: 'encoding',
       tags: ['base64', 'base32', 'url', 'html', '编码', '解码', '转换'],
       enabled: true,

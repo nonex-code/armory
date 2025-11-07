@@ -133,18 +133,20 @@
 import { storeToRefs } from 'pinia';
 import { useHtmlEncodeStore } from '@/store/modules/tools/encoding/HtmlEncode';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'HtmlEncodePage',
   meta: {
     tool: {
       id: 'html-encode',
-      name: 'HTML实体编码',
-      description: '将文本转换为HTML实体编码，用于在HTML中安全显示特殊字符',
+      name: 'HTML编码工具',
+      description: 'HTML实体编码和解码工具，支持HTML特殊字符的编码转换',
+      icon: '🔤',
       category: 'encoding',
-      icon: 'code-bracket',
-      tags: ['HTML', '实体编码', 'XSS防护', '特殊字符'],
-      keywords: ['html', 'encode', 'entity', 'xss', 'html实体编码', '特殊字符']
+      tags: ['html', '编码', '解码', '实体', '字符'],
+      enabled: true,
+      isPopular: true,
+      order: 4
     }
   }
 });

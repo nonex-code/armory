@@ -228,18 +228,20 @@
 import { storeToRefs } from 'pinia';
 import { useFormatConverterStore } from '@/store/modules/tools/converter/FormatConverter.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'FormatConverterPage',
   meta: {
     tool: {
       id: 'format-converter',
-      name: '格式化工具',
-      description: '支持JSON、XML、SQL等多种格式的格式化和压缩，提供语法高亮和错误检查',
-      category: 'converter',
-      icon: 'align-left',
-      tags: ['格式化', '压缩', 'JSON', 'XML', 'SQL'],
-      keywords: ['format', 'formatter', 'minify', 'json', 'xml', 'sql', '格式化', '压缩']
+      name: '格式转换器',
+      description: '支持多种数据格式之间的转换，包括JSON、XML、YAML、CSV等格式',
+      icon: '📊',
+      category: 'data',
+      tags: ['json', 'xml', 'yaml', 'csv', '格式', '转换', '数据处理'],
+      enabled: true,
+      isPopular: true,
+      order: 1
     }
   }
 });

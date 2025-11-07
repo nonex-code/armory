@@ -262,18 +262,20 @@ import { useColorPickerStore } from '@/store/modules/tools/generator/ColorPicker
 import { useToast } from '@/composables/useToast';
 import toolService from '@/services/toolService';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'ColorPickerPage',
   meta: {
     tool: {
       id: 'color-picker',
       name: '颜色选择器',
-      description: '选择颜色并转换为不同格式，支持HEX、RGB、RGBA、HSL等格式',
-      category: 'generator',
-      icon: 'swatch',
-      tags: ['颜色', '调色板', 'HEX', 'RGB', 'RGBA', 'HSL', '格式转换'],
-      keywords: ['颜色选择器', '调色板', '颜色格式转换', 'HEX转RGB', 'RGB转HEX', '颜色代码']
+      description: '颜色选择工具，支持RGB、HEX、HSL等多种颜色格式的选取和转换',
+      icon: '🎨',
+      category: 'developer',
+      tags: ['颜色', '选择', 'rgb', 'hex', 'hsl', '开发工具'],
+      enabled: true,
+      isPopular: true,
+      order: 5
     }
   }
 });

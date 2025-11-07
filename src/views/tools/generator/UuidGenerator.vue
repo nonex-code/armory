@@ -200,18 +200,20 @@ import { useUuidGeneratorStore } from '@/store/modules/tools/generator/UuidGener
 import { useToast } from '@/composables/useToast';
 import toolService from '@/services/toolService';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'UuidGeneratorPage',
   meta: {
     tool: {
       id: 'uuid-generator',
       name: 'UUID生成器',
-      description: '生成通用唯一标识符(UUID)，支持v1和v4两种版本',
+      description: 'UUID生成工具，支持生成多种版本的UUID标识符',
+      icon: '🎨',
       category: 'generator',
-      icon: 'fingerprint',
-      tags: ['UUID', '唯一标识符', '随机ID', '批量生成', '版本选择'],
-      keywords: ['UUID生成器', '唯一ID', 'v1 UUID', 'v4 UUID', '随机标识符']
+      tags: ['uuid', '生成', '标识符', '唯一', '随机', '内容生成'],
+      enabled: true,
+      isPopular: true,
+      order: 2
     }
   }
 });

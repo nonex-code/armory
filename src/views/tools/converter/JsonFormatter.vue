@@ -168,18 +168,20 @@
 import { storeToRefs } from 'pinia';
 import { useJsonFormatterStore } from '@/store/modules/tools/converter/JsonFormatter.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'JsonFormatterPage',
   meta: {
     tool: {
       id: 'json-formatter',
-      name: 'JSON格式化',
-      description: '格式化和验证JSON数据，支持美化、压缩和语法检查',
-      category: 'converter',
-      icon: '📝',
-      tags: ['json', '格式化', '美化', '压缩', '验证'],
-      keywords: ['json', 'formatter', 'beautify', 'minify', 'validate', '格式化', '美化', '压缩', '验证']
+      name: 'JSON格式化工具',
+      description: 'JSON格式化和美化工具，支持JSON数据的缩进、语法高亮和验证',
+      icon: '📊',
+      category: 'data',
+      tags: ['json', '格式化', '美化', '缩进', '验证', '数据处理'],
+      enabled: true,
+      isPopular: true,
+      order: 3
     }
   }
 });

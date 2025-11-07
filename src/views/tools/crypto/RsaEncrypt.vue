@@ -191,18 +191,20 @@
 import { storeToRefs } from 'pinia';
 import { useRsaEncryptStore } from '@/store/modules/tools/crypto/RsaEncrypt.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'RsaEncryptPage',
   meta: {
     tool: {
       id: 'rsa-encrypt',
-      name: 'RSA加密',
-      description: '使用RSA算法对文本进行加密处理，支持生成密钥对和自定义公钥',
+      name: 'RSA加密工具',
+      description: 'RSA非对称加密工具，支持RSA密钥生成、加密和解密操作',
+      icon: '🔒',
       category: 'crypto',
-      icon: 'key',
-      tags: ['RSA', '加密', '密钥对', '非对称加密'],
-      keywords: ['rsa', 'encrypt', 'encryption', 'key', 'rsa加密', '非对称加密']
+      tags: ['rsa', '加密', '解密', '非对称', '安全'],
+      enabled: true,
+      isPopular: true,
+      order: 3
     }
   }
 });

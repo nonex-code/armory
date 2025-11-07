@@ -297,18 +297,20 @@
 import { storeToRefs } from 'pinia';
 import { useCaesarCipherStore } from '@/store/modules/tools/ctf/CaesarCipher';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'CaesarCipherPage',
   meta: {
     tool: {
       id: 'caesar-cipher',
-      name: '凯撒密码',
-      description: '使用凯撒密码对文本进行加密和解密，支持暴力破解和频率分析',
+      name: '凯撒密码工具',
+      description: '凯撒密码加密和解密工具，支持自定义偏移量的字母替换加密',
+      icon: '🔤',
       category: 'ctf',
-      icon: 'lock-closed',
-      tags: ['凯撒密码', '加密', '解密', 'CTF', '密码学'],
-      keywords: ['caesar', 'cipher', 'encrypt', 'decrypt', 'shift', '凯撒密码', '加密解密']
+      tags: ['凯撒密码', '加密', '解密', '偏移', '替换'],
+      enabled: true,
+      isPopular: true,
+      order: 1
     }
   }
 });

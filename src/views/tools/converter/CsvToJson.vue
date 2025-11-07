@@ -181,18 +181,20 @@
 import { storeToRefs } from 'pinia';
 import { useCsvToJsonStore } from '@/store/modules/tools/converter/CsvToJson.js';
 
-// 定义组件选项，确保keepalive能正常工作
+// 定义组件选项，确保keepalive能正常工作，并包含工具配置
 defineOptions({
   name: 'CsvToJsonPage',
   meta: {
     tool: {
-      id: 'csv-json',
-      name: 'CSV转JSON',
-      description: '将CSV格式的数据转换为JSON格式，方便在Web应用中使用',
-      category: 'converter',
-      icon: '📋',
-      tags: ['csv', 'json', '转换', '数据'],
-      keywords: ['csv', 'json', 'converter', 'data', '转换', '数据']
+      id: 'csv-to-json',
+      name: 'CSV转JSON工具',
+      description: 'CSV格式数据转换为JSON格式工具，支持自定义分隔符和字段映射',
+      icon: '📊',
+      category: 'data',
+      tags: ['csv', 'json', '转换', '数据', '格式', '数据处理'],
+      enabled: true,
+      isPopular: true,
+      order: 4
     }
   }
 });
