@@ -101,7 +101,7 @@ const isDropdownOpen = (categoryId) => {
 
 // 动态页面标题
 const pageTitle = computed(() => {
-  return route.meta?.title || 'WebTools';
+  return route.meta?.title || 'armory';
 });
 
 // 检查分类是否处于激活状态
@@ -197,7 +197,7 @@ watch(searchQuery, searchTools);
         isScrolled ? 'shadow-md' : 'shadow-sm'
       ]"
     >
-      <div class="container mx-auto px-3 py-2">
+      <div class="container mx-auto px-3 sm:px-4 py-2">
         <div class="flex items-center justify-between">
           <!-- Logo和主导航 -->
           <div class="flex items-center space-x-2 lg:space-x-4">
@@ -206,9 +206,9 @@ watch(searchQuery, searchTools);
               @click="router.push('/')"
             >
               <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-content font-bold shadow-lg">
-                W
+                A
               </div>
-              <span class="text-sm font-semibold text-base-content hidden sm:block">WebTools</span>
+              <span class="text-sm font-semibold text-base-content hidden xs:inline">armory</span>
             </div>
             
             <!-- 主导航菜单 - 桌面端 -->
@@ -267,15 +267,15 @@ watch(searchQuery, searchTools);
           </div>
           
           <!-- 右侧工具栏 -->
-          <div class="flex items-center space-x-1">
+          <div class="flex items-center space-x-1 sm:space-x-2">
             <!-- 搜索框 -->
-            <div class="hidden md:block relative">
+            <div class="hidden sm:block relative">
               <div class="form-control">
                 <input 
                   ref="searchInputRef"
                   type="text" 
                   placeholder="搜索工具 (Ctrl+K)" 
-                  class="input input-bordered input-xs bg-base-200/50 focus:bg-base-100 transition-colors duration-200 w-32 lg:w-40 pr-8"
+                  class="input input-bordered input-xs bg-base-200/50 focus:bg-base-100 transition-colors duration-200 w-28 sm:w-32 md:w-36 lg:w-40 pr-8"
                   v-model="searchQuery"
                   @focus="isSearchFocused = true"
                   @blur="() => setTimeout(() => isSearchFocused = false, 200)"
@@ -333,16 +333,16 @@ watch(searchQuery, searchTools);
             <div class="dropdown dropdown-end lg:hidden">
               <label 
                 tabindex="0" 
-                class="btn btn-ghost btn-xs btn-circle"
+                class="btn btn-ghost btn-xs sm:btn-sm btn-circle"
                 @click="isMobileMenuOpen = !isMobileMenuOpen"
               >
-                <BaseIcon name="menu" custom-class="h-4 w-4" />
+                <BaseIcon name="menu" custom-class="h-4 w-4 sm:h-5 sm:w-5" />
               </label>
               
               <!-- 移动端菜单 -->
               <ul 
                 tabindex="0" 
-                class="menu menu-compact dropdown-content mt-2 p-2 shadow bg-base-100/95 backdrop-blur-sm rounded-box w-56 border border-base-300/30"
+                class="menu menu-compact dropdown-content mt-2 p-2 shadow bg-base-100/95 backdrop-blur-sm rounded-box w-52 sm:w-64 max-w-[calc(100vw-2rem)] border border-base-300/30"
                 :class="{ 'block': isMobileMenuOpen, 'hidden': !isMobileMenuOpen }"
               >
                 <!-- 移动端搜索 -->
@@ -396,24 +396,24 @@ watch(searchQuery, searchTools);
     </header>
     
     <!-- 主内容区域 -->
-    <main class="flex-1 container mx-auto px-4 py-6 max-w-7xl">
+    <main class="flex-1 container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 max-w-7xl">
       <!-- 页面标题和面包屑 -->
-      <div class="mb-6" v-if="pageTitle && $route.path !== '/'">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-base-content mb-2">{{ pageTitle }}</h1>
-            <div class="breadcrumbs text-sm">
-              <ul>
+      <div class="mb-4 sm:mb-6" v-if="pageTitle && $route.path !== '/'">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div class="flex-1 min-w-0">
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content mb-1 sm:mb-2 truncate">{{ pageTitle }}</h1>
+            <div class="breadcrumbs text-xs sm:text-sm">
+              <ul class="flex flex-wrap gap-1">
                 <li>
                   <router-link to="/" class="flex items-center">
-                    <BaseIcon name="home" custom-class="h-4 w-4 mr-1" />
+                    <BaseIcon name="home" custom-class="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                     首页
                   </router-link>
                 </li>
                 <li v-if="route.meta?.category">
                   {{ route.meta.category }}
                 </li>
-                <li class="text-base-content/80">
+                <li class="text-base-content/80 truncate">
                   {{ pageTitle }}
                 </li>
               </ul>
@@ -421,18 +421,18 @@ watch(searchQuery, searchTools);
           </div>
           
           <!-- 最近使用工具 -->
-          <div class="hidden lg:block" v-if="menuStore.getRecentTools.length > 0">
-            <div class="text-sm font-medium text-base-content/70 mb-2">最近使用</div>
-            <div class="flex space-x-2">
+          <div class="hidden sm:block" v-if="menuStore.getRecentTools.length > 0">
+            <div class="text-xs sm:text-sm font-medium text-base-content/70 mb-1 sm:mb-2">最近使用</div>
+            <div class="flex flex-wrap gap-1 sm:gap-2">
               <router-link 
                 v-for="tool in menuStore.getRecentTools.slice(0, 3)" 
                 :key="tool.id"
                 :to="tool.path"
-                class="btn btn-sm btn-ghost bg-base-100/70 border border-base-300/30 hover:bg-base-200/50 transition-all duration-200"
+                class="btn btn-xs sm:btn-sm btn-ghost bg-base-100/70 border border-base-300/30 hover:bg-base-200/50 transition-all duration-200 truncate"
                 @click="recordToolUsage(tool.id)"
               >
-                <span class="text-lg">{{ tool.icon }}</span>
-                <span class="ml-1">{{ tool.name }}</span>
+                <span class="text-sm sm:text-lg">{{ tool.icon }}</span>
+                <span class="ml-1 truncate">{{ tool.name }}</span>
               </router-link>
             </div>
           </div>
@@ -446,15 +446,15 @@ watch(searchQuery, searchTools);
     
     <!-- 页脚 -->
     <footer class="bg-base-100/80 backdrop-blur-sm border-t border-base-300/50 mt-auto">
-      <div class="container mx-auto px-4 py-6">
-        <div class="flex flex-col md:flex-row justify-between items-center">
-          <div class="text-sm text-base-content/70 mb-2 md:mb-0">
+      <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+          <div class="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
             © 2023 WebTools - 为开发者打造的实用工具集合
           </div>
-          <div class="flex space-x-4 text-sm">
-            <a href="#" class="text-base-content/70 hover:text-primary transition-colors">关于</a>
-            <a href="#" class="text-base-content/70 hover:text-primary transition-colors">帮助</a>
-            <a href="#" class="text-base-content/70 hover:text-primary transition-colors">反馈</a>
+          <div class="flex flex-wrap justify-center gap-3 sm:gap-4 text-xs sm:text-sm">
+            <a href="#" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">关于</a>
+            <a href="#" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">帮助</a>
+            <a href="#" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">反馈</a>
           </div>
         </div>
       </div>
@@ -583,6 +583,16 @@ watch(searchQuery, searchTools);
 }
 
 /* 响应式调整 - 确保内容对齐 */
+@media (max-width: 1280px) {
+  .dropdown-content .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .dropdown-content {
+    max-width: 320px;
+  }
+}
+
 @media (max-width: 1024px) {
   .dropdown-content .grid {
     grid-template-columns: repeat(2, 1fr);
@@ -606,6 +616,31 @@ watch(searchQuery, searchTools);
   
   .dropdown-content {
     max-width: 240px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dropdown-content .grid a {
+    min-height: 2.25rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+  
+  .dropdown-content {
+    max-width: 200px;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+  .dropdown-content {
+    max-width: 180px;
+  }
+  
+  .dropdown-content .grid a {
+    min-height: 2rem;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8rem;
   }
 }
 </style>

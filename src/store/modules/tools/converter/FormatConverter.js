@@ -3,20 +3,34 @@ import { ref, computed } from 'vue';
 
 export const useFormatConverterStore = defineStore('formatConverter', () => {
   // 状态定义
-  const activeTab = ref('json');
-  const isFormatMode = ref(true); // true为格式化，false为压缩
-  const sortKeys = ref(false); // JSON键排序
-  const uppercaseKeywords = ref(false); // SQL关键字大写
+  const activeTab = ref('case');
   const inputText = ref('');
   const outputText = ref('');
   const processing = ref(false);
   const errorMessage = ref('');
+  
+  // 转换选项
+  const caseOptions = ref({
+    targetCase: 'lower', // lower, upper, title, sentence
+    preserveAcronyms: true
+  });
+  
+  const whitespaceOptions = ref({
+    trim: true,
+    normalize: true,
+    removeExtraSpaces: true
+  });
+  
+  const encodingOptions = ref({
+    sourceEncoding: 'utf8',
+    targetEncoding: 'utf8'
+  });
 
-  // 格式类型标签页
+  // 转换类型标签页
   const formatTabs = [
-    { id: 'json', name: 'JSON', icon: '{}' },
-    { id: 'xml', name: 'XML', icon: '📄' },
-    { id: 'sql', name: 'SQL', icon: '🗃️' }
+    { id: 'case', name: '大小写转换', icon: '🔤' },
+    { id: 'whitespace', name: '空格处理', icon: '␣' },
+    { id: 'encoding', name: '编码转换', icon: '🔣' }
   ];
 
   // 计算属性
@@ -26,223 +40,130 @@ export const useFormatConverterStore = defineStore('formatConverter', () => {
   });
 
   const inputPlaceholder = computed(() => {
-    const action = isFormatMode.value ? '格式化' : '压缩';
     const type = activeTabName.value;
-    return `在此输入需要${action}的${type}内容...`;
+    return `在此输入需要${type}的文本内容...`;
   });
 
   const hasInput = computed(() => !!inputText.value);
   const hasOutput = computed(() => !!outputText.value);
   const canProcess = computed(() => hasInput.value && !processing.value);
 
-  // JSON 格式化/压缩
-  const formatJson = (text) => {
+  // 大小写转换
+  const convertCase = (text) => {
     try {
-      const json = JSON.parse(text);
+      const { targetCase, preserveAcronyms } = caseOptions.value;
       
-      // 如果需要排序键
-      if (sortKeys.value) {
-        const sortedJson = sortObjectKeys(json);
-        return JSON.stringify(sortedJson, null, 2);
+      switch (targetCase) {
+        case 'lower':
+          return text.toLowerCase();
+        case 'upper':
+          return text.toUpperCase();
+        case 'title':
+          return text.replace(/\w\S*/g, (txt) => {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+          });
+        case 'sentence':
+          return text.replace(/(^|\.\s+)([a-z])/g, (match, p1, p2) => {
+            return p1 + p2.toUpperCase();
+          });
+        default:
+          return text;
+      }
+    } catch (error) {
+      throw new Error('大小写转换失败: ' + error.message);
+    }
+  };
+
+  // 空格处理
+  const processWhitespace = (text) => {
+    try {
+      const { trim, normalize, removeExtraSpaces } = whitespaceOptions.value;
+      let result = text;
+      
+      if (trim) {
+        result = result.trim();
       }
       
-      return JSON.stringify(json, null, 2);
-    } catch (error) {
-      throw new Error('JSON格式错误: ' + error.message);
-    }
-  };
-
-  const compressJson = (text) => {
-    try {
-      const json = JSON.parse(text);
-      return JSON.stringify(json);
-    } catch (error) {
-      throw new Error('JSON格式错误: ' + error.message);
-    }
-  };
-
-  // 递归排序对象键
-  const sortObjectKeys = (obj) => {
-    if (Array.isArray(obj)) {
-      return obj.map(item => sortObjectKeys(item));
-    } else if (obj !== null && typeof obj === 'object') {
-      const sortedKeys = Object.keys(obj).sort();
-      const sortedObj = {};
-      
-      for (const key of sortedKeys) {
-        sortedObj[key] = sortObjectKeys(obj[key]);
+      if (normalize) {
+        // 标准化换行符
+        result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       }
       
-      return sortedObj;
-    }
-    
-    return obj;
-  };
-
-  // XML 格式化/压缩
-  const formatXml = (text) => {
-    try {
-      // 简单的XML格式化实现
-      // 在实际项目中，可能需要使用更专业的XML解析库
-      const formatted = text
-        // 在开始标签前添加换行和缩进
-        .replace(/></g, '>\n<')
-        // 处理自闭合标签
-        .replace(/(\s+)(\/>)/g, '$1$2')
-        // 处理属性
-        .replace(/(\w+)=/g, '\n    $1=');
-      
-      // 添加缩进
-      let indentLevel = 0;
-      const lines = formatted.split('\n');
-      const indentedLines = lines.map(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return '';
-        
-        // 如果是结束标签，减少缩进
-        if (trimmed.startsWith('</')) {
-          indentLevel = Math.max(0, indentLevel - 1);
-        }
-        
-        const indentedLine = '  '.repeat(indentLevel) + trimmed;
-        
-        // 如果是开始标签且不是自闭合标签，增加缩进
-        if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>')) {
-          indentLevel++;
-        }
-        
-        return indentedLine;
-      });
-      
-      return indentedLines.join('\n');
-    } catch (error) {
-      throw new Error('XML格式化失败: ' + error.message);
-    }
-  };
-
-  const compressXml = (text) => {
-    try {
-      // 简单的XML压缩实现
-      return text
-        // 移除标签之间的空白
-        .replace(/>\s+</g, '><')
-        // 移除属性周围的空白
-        .replace(/\s+=\s+/g, '=')
-        // 移除行首行尾空白
-        .replace(/^\s+|\s+$/gm, '');
-    } catch (error) {
-      throw new Error('XML压缩失败: ' + error.message);
-    }
-  };
-
-  // SQL 格式化/压缩
-  const formatSql = (text) => {
-    try {
-      // 简单的SQL格式化实现
-      // 在实际项目中，可能需要使用更专业的SQL解析库
-      const keywords = [
-        'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'ORDER BY', 'GROUP BY', 
-        'HAVING', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP',
-        'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN',
-        'UNION', 'VALUES', 'SET', 'LIMIT', 'OFFSET'
-      ];
-      
-      let formatted = text;
-      
-      // 处理关键字大小写
-      if (uppercaseKeywords.value) {
-        keywords.forEach(keyword => {
-          const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-          formatted = formatted.replace(regex, keyword);
-        });
+      if (removeExtraSpaces) {
+        // 移除多余空格
+        result = result.replace(/\s+/g, ' ');
       }
       
-      // 添加换行和缩进
-      keywords.forEach(keyword => {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-        formatted = formatted.replace(regex, '\n' + keyword);
-      });
-      
-      // 清理多余的换行
-      formatted = formatted.replace(/\n\s*\n/g, '\n');
-      
-      // 添加缩进
-      const lines = formatted.split('\n');
-      const indentedLines = lines.map(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return '';
-        
-        // 如果是WHERE、AND、OR等，增加缩进
-        if (/^(WHERE|AND|OR|ORDER BY|GROUP BY|HAVING)/i.test(trimmed)) {
-          return '  ' + trimmed;
-        }
-        
-        return trimmed;
-      });
-      
-      return indentedLines.join('\n');
+      return result;
     } catch (error) {
-      throw new Error('SQL格式化失败: ' + error.message);
+      throw new Error('空格处理失败: ' + error.message);
     }
   };
 
-  const compressSql = (text) => {
+  // 编码转换
+  const convertEncoding = (text) => {
     try {
-      // 简单的SQL压缩实现
-      return text
-        // 移除注释
-        .replace(/--.*$/gm, '')
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        // 移除多余空白
-        .replace(/\s+/g, ' ')
-        // 移除关键字周围的空格
-        .replace(/\s*(,|=|<|>|!|\+|-|\*|\/)\s*/g, '$1')
-        // 移除括号周围的空格
-        .replace(/\s*\(\s*/g, '(')
-        .replace(/\s*\)\s*/g, ')')
-        // 清理首尾空白
-        .trim();
+      const { sourceEncoding, targetEncoding } = encodingOptions.value;
+      
+      if (sourceEncoding === targetEncoding) {
+        return text;
+      }
+      
+      // 简单的编码转换实现
+      // 在实际项目中，可能需要使用更专业的编码转换库
+      if (sourceEncoding === 'utf8' && targetEncoding === 'base64') {
+        return btoa(unescape(encodeURIComponent(text)));
+      }
+      
+      if (sourceEncoding === 'base64' && targetEncoding === 'utf8') {
+        return decodeURIComponent(escape(atob(text)));
+      }
+      
+      if (sourceEncoding === 'utf8' && targetEncoding === 'url') {
+        return encodeURIComponent(text);
+      }
+      
+      if (sourceEncoding === 'url' && targetEncoding === 'utf8') {
+        return decodeURIComponent(text);
+      }
+      
+      return text;
     } catch (error) {
-      throw new Error('SQL压缩失败: ' + error.message);
+      throw new Error('编码转换失败: ' + error.message);
     }
   };
 
   // 处理文本
-  const processText = async () => {
-    if (!inputText.value || !inputText.value.trim()) {
-      return;
-    }
-    
+  const processText = () => {
     processing.value = true;
     errorMessage.value = '';
     
     try {
-      let result = '';
+      if (!inputText.value.trim()) {
+        outputText.value = '';
+        return;
+      }
+      
+      let result;
       
       switch (activeTab.value) {
-        case 'json':
-          result = isFormatMode.value 
-            ? formatJson(inputText.value) 
-            : compressJson(inputText.value);
+        case 'case':
+          result = convertCase(inputText.value);
           break;
-        case 'xml':
-          result = isFormatMode.value 
-            ? formatXml(inputText.value) 
-            : compressXml(inputText.value);
+        case 'whitespace':
+          result = processWhitespace(inputText.value);
           break;
-        case 'sql':
-          result = isFormatMode.value 
-            ? formatSql(inputText.value) 
-            : compressSql(inputText.value);
+        case 'encoding':
+          result = convertEncoding(inputText.value);
           break;
+        default:
+          result = inputText.value;
       }
       
       outputText.value = result;
-      return true;
     } catch (error) {
       errorMessage.value = error.message;
       outputText.value = '';
-      return false;
     } finally {
       processing.value = false;
     }
@@ -278,7 +199,7 @@ export const useFormatConverterStore = defineStore('formatConverter', () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${activeTab.value}_${isFormatMode.value ? 'formatted' : 'compressed'}.txt`;
+      a.download = `${activeTab.value}_converted.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -292,10 +213,7 @@ export const useFormatConverterStore = defineStore('formatConverter', () => {
 
   // 重置为初始状态
   const reset = () => {
-    activeTab.value = 'json';
-    isFormatMode.value = true;
-    sortKeys.value = false;
-    uppercaseKeywords.value = false;
+    activeTab.value = 'case';
     inputText.value = '';
     outputText.value = '';
     processing.value = false;
@@ -305,14 +223,14 @@ export const useFormatConverterStore = defineStore('formatConverter', () => {
   return {
     // 状态
     activeTab,
-    isFormatMode,
-    sortKeys,
-    uppercaseKeywords,
     inputText,
     outputText,
     processing,
     errorMessage,
     formatTabs,
+    caseOptions,
+    whitespaceOptions,
+    encodingOptions,
     
     // 计算属性
     activeTabName,
@@ -322,13 +240,9 @@ export const useFormatConverterStore = defineStore('formatConverter', () => {
     canProcess,
     
     // 方法
-    formatJson,
-    compressJson,
-    sortObjectKeys,
-    formatXml,
-    compressXml,
-    formatSql,
-    compressSql,
+    convertCase,
+    processWhitespace,
+    convertEncoding,
     processText,
     clearInput,
     copyOutput,

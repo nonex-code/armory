@@ -178,25 +178,25 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-4">
+  <div class="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
     <!-- 页面标题 -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-base-content">WebTools</h1>
-      <p class="text-base-content/70 mt-2">一站式开发工具平台，提供编码、加密、格式转换等多种实用工具</p>
+    <div class="mb-4 sm:mb-6">
+      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content">WebTools</h1>
+      <p class="text-base-content/70 mt-1 sm:mt-2 text-sm sm:text-base">一站式开发工具平台，提供编码、加密、格式转换等多种实用工具</p>
     </div>
 
     <!-- 搜索栏 -->
-    <div class="form-control mb-6">
-      <div class="input-group">
+    <div class="form-control mb-4 sm:mb-6">
+      <div class="input-group flex-col sm:flex-row gap-2 sm:gap-0">
         <input 
           type="text" 
           placeholder="搜索工具..." 
-          class="input input-bordered flex-1"
+          class="input input-bordered flex-1 text-sm sm:text-base"
           v-model="searchQuery"
           @keyup.enter="searchTools"
         />
-        <button class="btn btn-square btn-primary" @click="searchTools">
-          <BaseIcon name="magnifying-glass" custom-class="h-6 w-6" />
+        <button class="btn btn-square btn-primary btn-sm sm:btn-md" @click="searchTools">
+          <BaseIcon name="magnifying-glass" custom-class="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
         <button v-if="searchQuery" class="btn btn-square btn-ghost" @click="clearSearch">
           <BaseIcon name="x-mark" custom-class="h-6 w-6" />
@@ -210,22 +210,22 @@ onMounted(async () => {
         搜索结果 ({{ searchResults.length }})
       </h2>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" v-if="searchResults.length > 0">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4" v-if="searchResults.length > 0">
         <div 
           v-for="tool in searchResults" 
           :key="tool.id"
-          class="card bg-base-100 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-[1.02]"
+          class="card bg-base-100 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-[1.02] min-w-0"
           @click="goToTool(tool.path)"
         >
-          <div class="card-body">
+          <div class="card-body p-3 sm:p-4">
             <div class="flex items-center mb-2">
-                <BaseIcon :name="tool.icon" custom-class="text-3xl mr-3" />
-                <h2 class="card-title">{{ tool.name }}</h2>
+                <BaseIcon :name="tool.icon" custom-class="text-2xl sm:text-3xl mr-2 sm:mr-3" />
+                <h2 class="card-title text-sm sm:text-base truncate">{{ tool.name }}</h2>
               </div>
-            <p class="text-sm">{{ tool.description }}</p>
+            <p class="text-xs sm:text-sm text-base-content/70 line-clamp-2">{{ tool.description }}</p>
             <div class="card-actions justify-end mt-2">
-              <div class="badge badge-primary" v-if="tool.isPopular">热门</div>
-              <div class="badge badge-outline">{{ tool.category }}</div>
+              <div class="badge badge-primary badge-xs sm:badge-sm" v-if="tool.isPopular">热门</div>
+              <div class="badge badge-outline badge-xs sm:badge-sm truncate">{{ tool.category }}</div>
             </div>
           </div>
         </div>
@@ -247,26 +247,26 @@ onMounted(async () => {
     <!-- 工具分类展示 -->
     <div v-if="!searchQuery && !selectedCategory">
       <!-- 分类卡片 -->
-      <div class="mb-8">
-        <h2 class="text-xl font-bold mb-4">工具分类</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="mb-6 sm:mb-8">
+        <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">工具分类</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           <div 
             v-for="category in filteredCategories" 
             :key="category.id"
-            class="bg-base-100 rounded-xl p-4 shadow-md border border-base-300/30 transition-all hover:shadow-lg scale-95 hover:scale-100 cursor-pointer"
+            class="bg-base-100 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-md border border-base-300/30 transition-all hover:shadow-lg scale-95 hover:scale-100 cursor-pointer min-w-0"
             @click="goToCategory(category.id)"
           >
             <div class="flex items-center justify-between">
-              <div>
-                <div class="text-2xl mb-2">
+              <div class="flex-1 min-w-0">
+                <div class="text-xl sm:text-2xl mb-2">
                   <BaseIcon :name="category.icon" custom-class="inline-block" />
                 </div>
-                <div class="text-sm font-medium text-base-content">{{ category.name }}</div>
-                <div class="text-xs text-base-content/60 mt-1">{{ category.description }}</div>
+                <div class="text-sm font-medium text-base-content truncate">{{ category.name }}</div>
+                <div class="text-xs text-base-content/60 mt-1 line-clamp-2">{{ category.description }}</div>
                 <div class="text-xs text-base-content/50 mt-2">{{ getToolCount(category.id) }} 个工具</div>
               </div>
-              <div class="text-base-content/40">
-              <BaseIcon name="chevron-right" custom-class="h-5 w-5" />
+              <div class="text-base-content/40 ml-2">
+              <BaseIcon name="chevron-right" custom-class="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             </div>
           </div>
@@ -274,31 +274,31 @@ onMounted(async () => {
       </div>
 
       <!-- 分类下的工具展示 -->
-      <div class="mb-8" v-for="category in filteredCategories" :key="`tools-${category.id}`">
+      <div class="mb-6 sm:mb-8" v-for="category in filteredCategories" :key="`tools-${category.id}`">
         <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg font-semibold flex items-center">
-              <span class="text-xl mr-2">
+            <h3 class="text-base sm:text-lg font-semibold flex items-center truncate">
+              <span class="text-lg sm:text-xl mr-2">
                 <BaseIcon :name="category.icon" custom-class="inline-block" />
               </span>
-              {{ category.name }}
+              <span class="truncate">{{ category.name }}</span>
             </h3>
-            <button class="btn btn-sm btn-ghost" @click="goToCategory(category.id)">
+            <button class="btn btn-xs sm:btn-sm btn-ghost whitespace-nowrap" @click="goToCategory(category.id)">
               查看全部
-              <BaseIcon name="chevron-right" custom-class="h-4 w-4 ml-1" />
+              <BaseIcon name="chevron-right" custom-class="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
             </button>
           </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
           <div 
             v-for="tool in getToolsByCategory(category.id).slice(0, 4)" 
             :key="tool.id"
-            class="bg-base-100 rounded-lg p-3 shadow-sm border border-base-300/20 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer"
+            class="bg-base-100 rounded-lg p-2 sm:p-3 shadow-sm border border-base-300/20 transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer min-w-0"
             @click="goToTool(tool.path)"
           >
             <div class="flex items-center">
-              <BaseIcon :name="tool.icon" custom-class="text-xl mr-2" />
+              <BaseIcon :name="tool.icon" custom-class="text-lg sm:text-xl mr-2" />
               <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium truncate">{{ tool.name }}</div>
-                <div class="text-xs text-base-content/60 truncate">{{ tool.description }}</div>
+                <div class="text-xs sm:text-sm font-medium truncate">{{ tool.name }}</div>
+                <div class="text-xs text-base-content/60 line-clamp-1">{{ tool.description }}</div>
               </div>
               <div class="ml-1" v-if="tool.isPopular">
                 <div class="badge badge-primary badge-xs">热门</div>
@@ -309,53 +309,53 @@ onMounted(async () => {
       </div>
 
       <!-- 热门工具和最近使用 -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
         <!-- 热门工具 -->
-        <div class="bg-base-100 rounded-xl p-4 shadow-md border border-base-300/30">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-semibold flex items-center">
-              <span class="text-lg mr-2">🔥</span>
+        <div class="bg-base-100 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-md border border-base-300/30">
+          <div class="flex items-center justify-between mb-2 sm:mb-3">
+            <h3 class="text-sm sm:text-base font-semibold flex items-center">
+              <span class="text-base sm:text-lg mr-2">🔥</span>
               热门工具
             </h3>
           </div>
-          <div class="space-y-2">
+          <div class="space-y-1 sm:space-y-2">
             <div 
               v-for="tool in popularTools.slice(0, 5)" 
               :key="tool.id"
-              class="flex items-center p-2 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
+              class="flex items-center p-1 sm:p-2 rounded-md sm:rounded-lg hover:bg-base-200 transition-colors cursor-pointer min-w-0"
               @click="goToTool(tool.path)"
             >
-              <span class="text-xl mr-3">{{ tool.icon }}</span>
-              <div class="flex-1">
-                <div class="text-sm font-medium">{{ tool.name }}</div>
-                <div class="text-xs text-base-content/60">{{ tool.description }}</div>
+              <span class="text-lg sm:text-xl mr-2 sm:mr-3">{{ tool.icon }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs sm:text-sm font-medium truncate">{{ tool.name }}</div>
+                <div class="text-xs text-base-content/60 line-clamp-1">{{ tool.description }}</div>
               </div>
-              <div class="badge badge-outline badge-xs">{{ tool.category }}</div>
+              <div class="badge badge-outline badge-xs ml-1 sm:ml-2 whitespace-nowrap">{{ tool.category }}</div>
             </div>
           </div>
         </div>
 
         <!-- 最近使用 -->
-        <div class="bg-base-100 rounded-xl p-4 shadow-md border border-base-300/30" v-if="recentTools.length > 0">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-semibold flex items-center">
-              <span class="text-lg mr-2">🕒</span>
+        <div class="bg-base-100 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-md border border-base-300/30" v-if="recentTools.length > 0">
+          <div class="flex items-center justify-between mb-2 sm:mb-3">
+            <h3 class="text-sm sm:text-base font-semibold flex items-center">
+              <span class="text-base sm:text-lg mr-2">🕒</span>
               最近使用
             </h3>
           </div>
-          <div class="space-y-2">
+          <div class="space-y-1 sm:space-y-2">
             <div 
               v-for="tool in recentTools" 
               :key="tool.id"
-              class="flex items-center p-2 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
+              class="flex items-center p-1 sm:p-2 rounded-md sm:rounded-lg hover:bg-base-200 transition-colors cursor-pointer min-w-0"
               @click="goToTool(tool.path)"
             >
-              <span class="text-xl mr-3">{{ tool.icon }}</span>
-              <div class="flex-1">
-                <div class="text-sm font-medium">{{ tool.name }}</div>
-                <div class="text-xs text-base-content/60">{{ tool.description }}</div>
+              <span class="text-lg sm:text-xl mr-2 sm:mr-3">{{ tool.icon }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs sm:text-sm font-medium truncate">{{ tool.name }}</div>
+                <div class="text-xs text-base-content/60 line-clamp-1">{{ tool.description }}</div>
               </div>
-              <div class="badge badge-outline badge-xs">{{ tool.category }}</div>
+              <div class="badge badge-outline badge-xs ml-1 sm:ml-2 whitespace-nowrap">{{ tool.category }}</div>
             </div>
           </div>
         </div>
@@ -365,37 +365,37 @@ onMounted(async () => {
     <!-- 分类详情展示 -->
     <div v-if="selectedCategory && !searchQuery">
       <!-- 返回按钮和分类标题 -->
-      <div class="flex items-center mb-6">
-        <button class="btn btn-sm btn-ghost mr-3" @click="selectedCategory = null">
-          <BaseIcon name="chevron-left" custom-class="h-5 w-5" />
+      <div class="flex items-center mb-4 sm:mb-6">
+        <button class="btn btn-xs sm:btn-sm btn-ghost mr-2 sm:mr-3" @click="selectedCategory = null">
+          <BaseIcon name="chevron-left" custom-class="h-4 w-4 sm:h-5 sm:w-5" />
           返回
         </button>
-        <h2 class="text-xl font-bold flex items-center">
-          <span class="text-xl mr-2">{{ getCategoryById(selectedCategory)?.icon }}</span>
-          {{ getCategoryById(selectedCategory)?.name }}
+        <h2 class="text-lg sm:text-xl font-bold flex items-center truncate">
+          <span class="text-lg sm:text-xl mr-2">{{ getCategoryById(selectedCategory)?.icon }}</span>
+          <span class="truncate">{{ getCategoryById(selectedCategory)?.name }}</span>
         </h2>
       </div>
 
       <!-- 分类描述 -->
-      <div class="bg-base-100 rounded-xl p-4 shadow-md border border-base-300/30 mb-6">
-        <p class="text-sm text-base-content/70">{{ getCategoryById(selectedCategory)?.description }}</p>
+      <div class="bg-base-100 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-md border border-base-300/30 mb-4 sm:mb-6">
+        <p class="text-xs sm:text-sm text-base-content/70">{{ getCategoryById(selectedCategory)?.description }}</p>
         <p class="text-xs text-base-content/50 mt-2">共 {{ getToolCount(selectedCategory) }} 个工具</p>
       </div>
 
       <!-- 分类下的所有工具 -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         <div 
           v-for="tool in getToolsByCategory(selectedCategory)" 
           :key="tool.id"
-          class="card bg-base-100 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-[1.02]"
+          class="card bg-base-100 shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-[1.02] min-w-0"
           @click="goToTool(tool.path)"
         >
-          <div class="card-body">
+          <div class="card-body p-3 sm:p-4">
             <div class="flex items-center mb-2">
-              <span class="text-3xl mr-3">{{ tool.icon }}</span>
-              <h2 class="card-title">{{ tool.name }}</h2>
+              <span class="text-2xl sm:text-3xl mr-2 sm:mr-3">{{ tool.icon }}</span>
+              <h2 class="card-title text-sm sm:text-base truncate">{{ tool.name }}</h2>
             </div>
-            <p class="text-sm">{{ tool.description }}</p>
+            <p class="text-xs sm:text-sm text-base-content/70 line-clamp-2">{{ tool.description }}</p>
             <div class="card-actions justify-end mt-2">
               <div class="badge badge-primary" v-if="tool.isPopular">热门</div>
               <div class="badge badge-outline">{{ tool.category }}</div>

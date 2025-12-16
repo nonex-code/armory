@@ -4,17 +4,17 @@
     <div class="mb-8 text-center">
       <div class="flex items-center justify-center mb-2">
         <span class="text-4xl mr-3">🔀</span>
-        <h1 class="text-3xl md:text-4xl font-bold">格式化工具</h1>
+        <h1 class="text-3xl md:text-4xl font-bold">通用格式转换器</h1>
       </div>
       <p class="text-base-content/70 max-w-2xl mx-auto">
-        支持多种数据格式的格式化和美化，包括JSON、XML和SQL，提供语法高亮和错误检查
+        支持文本大小写转换、空格处理、编码转换等通用格式处理功能
       </p>
     </div>
 
-    <!-- 格式类型选择 -->
+    <!-- 转换类型选择 -->
     <div class="card bg-base-100 shadow-lg mb-6">
       <div class="card-body">
-        <h2 class="card-title text-xl">选择格式类型</h2>
+        <h2 class="card-title text-xl">选择转换类型</h2>
         <div class="tabs tabs-boxed w-full">
           <a 
             v-for="tab in formatTabs" 
@@ -43,7 +43,7 @@
           <!-- 文本输入区域 -->
           <div class="form-control">
             <label class="label">
-              <span class="label-text">请输入要{{ isFormatMode ? '格式化' : '压缩' }}的{{ activeTabName }}内容</span>
+              <span class="label-text">请输入要转换的{{ activeTabName }}内容</span>
             </label>
             <textarea 
               v-model="inputText"
@@ -52,38 +52,103 @@
             ></textarea>
           </div>
           
-          <!-- 格式化选项 -->
+          <!-- 转换选项 -->
           <div class="form-control mt-4">
             <label class="label">
-              <span class="label-text">选项</span>
+              <span class="label-text">转换选项</span>
             </label>
-            <div class="flex flex-wrap gap-2">
-              <label class="cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  class="checkbox checkbox-sm mr-2"
-                  v-model="isFormatMode"
-                />
-                <span class="label-text">{{ isFormatMode ? '格式化' : '压缩' }}</span>
-              </label>
+            <div class="flex flex-wrap gap-4">
+              <!-- 大小写转换选项 -->
+              <div v-if="activeTab === 'case'" class="flex flex-col gap-2">
+                <label class="cursor-pointer">
+                  <input 
+                    type="radio" 
+                    class="radio radio-sm mr-2"
+                    value="lower"
+                    v-model="caseOptions.targetCase"
+                  />
+                  <span class="label-text">小写</span>
+                </label>
+                <label class="cursor-pointer">
+                  <input 
+                    type="radio" 
+                    class="radio radio-sm mr-2"
+                    value="upper"
+                    v-model="caseOptions.targetCase"
+                  />
+                  <span class="label-text">大写</span>
+                </label>
+                <label class="cursor-pointer">
+                  <input 
+                    type="radio" 
+                    class="radio radio-sm mr-2"
+                    value="title"
+                    v-model="caseOptions.targetCase"
+                  />
+                  <span class="label-text">标题格式</span>
+                </label>
+                <label class="cursor-pointer">
+                  <input 
+                    type="radio" 
+                    class="radio radio-sm mr-2"
+                    value="sentence"
+                    v-model="caseOptions.targetCase"
+                  />
+                  <span class="label-text">句子格式</span>
+                </label>
+              </div>
               
-              <label v-if="activeTab === 'json'" class="cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  class="checkbox checkbox-sm mr-2"
-                  v-model="sortKeys"
-                />
-                <span class="label-text">排序键</span>
-              </label>
+              <!-- 空格处理选项 -->
+              <div v-if="activeTab === 'whitespace'" class="flex flex-col gap-2">
+                <label class="cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    class="checkbox checkbox-sm mr-2"
+                    v-model="whitespaceOptions.trim"
+                  />
+                  <span class="label-text">去除首尾空格</span>
+                </label>
+                <label class="cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    class="checkbox checkbox-sm mr-2"
+                    v-model="whitespaceOptions.normalize"
+                  />
+                  <span class="label-text">标准化换行符</span>
+                </label>
+                <label class="cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    class="checkbox checkbox-sm mr-2"
+                    v-model="whitespaceOptions.removeExtraSpaces"
+                  />
+                  <span class="label-text">移除多余空格</span>
+                </label>
+              </div>
               
-              <label v-if="activeTab === 'sql'" class="cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  class="checkbox checkbox-sm mr-2"
-                  v-model="uppercaseKeywords"
-                />
-                <span class="label-text">关键字大写</span>
-              </label>
+              <!-- 编码转换选项 -->
+              <div v-if="activeTab === 'encoding'" class="flex flex-col gap-2">
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">源编码</span>
+                  </label>
+                  <select v-model="encodingOptions.sourceEncoding" class="select select-bordered select-sm">
+                    <option value="utf8">UTF-8</option>
+                    <option value="base64">Base64</option>
+                    <option value="url">URL编码</option>
+                  </select>
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">目标编码</span>
+                  </label>
+                  <select v-model="encodingOptions.targetEncoding" class="select select-bordered select-sm">
+                    <option value="utf8">UTF-8</option>
+                    <option value="base64">Base64</option>
+                    <option value="url">URL编码</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -96,7 +161,7 @@
               :disabled="!inputText || processing"
               :class="{ 'loading': processing }"
             >
-              {{ isFormatMode ? '格式化' : '压缩' }}
+              转换
             </button>
           </div>
         </div>
@@ -149,22 +214,22 @@
     <!-- 工具说明 -->
     <div class="card bg-base-100 shadow-lg mt-6">
       <div class="card-body">
-        <h2 class="card-title">格式化说明</h2>
+        <h2 class="card-title">通用格式转换说明</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="collapse collapse-arrow bg-base-200">
             <input type="checkbox" /> 
             <div class="collapse-title text-lg font-medium">
-              JSON 格式化
+              大小写转换
             </div>
             <div class="collapse-content"> 
-              <p>JSON (JavaScript Object Notation) 是一种轻量级的数据交换格式。格式化后的JSON具有清晰的缩进和换行，便于阅读和调试。</p>
+              <p>文本大小写转换工具支持多种大小写格式的转换，便于统一文本格式。</p>
               <div class="mt-2">
                 <strong>功能特点：</strong>
                 <ul class="list-disc list-inside mt-1 text-sm">
-                  <li>美化JSON结构，添加缩进</li>
-                  <li>语法验证和错误提示</li>
-                  <li>支持键排序</li>
-                  <li>压缩JSON，移除空格</li>
+                  <li>小写转换：将所有字母转换为小写</li>
+                  <li>大写转换：将所有字母转换为大写</li>
+                  <li>标题格式：每个单词首字母大写</li>
+                  <li>句子格式：每个句子首字母大写</li>
                 </ul>
               </div>
             </div>
@@ -173,17 +238,17 @@
           <div class="collapse collapse-arrow bg-base-200">
             <input type="checkbox" /> 
             <div class="collapse-title text-lg font-medium">
-              XML 格式化
+              空格处理
             </div>
             <div class="collapse-content"> 
-              <p>XML (eXtensible Markup Language) 是一种标记语言，用于存储和传输数据。格式化后的XML具有清晰的层级结构。</p>
+              <p>空格处理工具可以清理和标准化文本中的空白字符，提高文本质量。</p>
               <div class="mt-2">
                 <strong>功能特点：</strong>
                 <ul class="list-disc list-inside mt-1 text-sm">
-                  <li>美化XML结构，添加缩进</li>
-                  <li>保持属性和内容的完整性</li>
-                  <li>处理CDATA和注释</li>
-                  <li>压缩XML，移除多余空格</li>
+                  <li>去除首尾空格：移除文本开头和结尾的空白</li>
+                  <li>标准化换行符：统一不同系统的换行符格式</li>
+                  <li>移除多余空格：将连续多个空格合并为一个</li>
+                  <li>提高文本可读性</li>
                 </ul>
               </div>
             </div>
@@ -192,17 +257,17 @@
           <div class="collapse collapse-arrow bg-base-200">
             <input type="checkbox" /> 
             <div class="collapse-title text-lg font-medium">
-              SQL 格式化
+              编码转换
             </div>
             <div class="collapse-content"> 
-              <p>SQL (Structured Query Language) 是用于管理关系数据库的语言。格式化后的SQL具有清晰的语句结构和关键字高亮。</p>
+              <p>编码转换工具支持不同字符编码格式之间的转换，便于数据交换和处理。</p>
               <div class="mt-2">
                 <strong>功能特点：</strong>
                 <ul class="list-disc list-inside mt-1 text-sm">
-                  <li>美化SQL语句，添加缩进</li>
-                  <li>关键字大小写转换</li>
-                  <li>对齐列表和条件</li>
-                  <li>压缩SQL，移除多余空格</li>
+                  <li>UTF-8编码：标准Unicode编码格式</li>
+                  <li>Base64编码：二进制数据文本化编码</li>
+                  <li>URL编码：URL安全字符编码</li>
+                  <li>支持双向转换</li>
                 </ul>
               </div>
             </div>
@@ -212,11 +277,11 @@
         <div class="mt-4">
           <h3 class="font-bold mb-2">使用场景：</h3>
           <ul class="list-disc list-inside text-sm space-y-1">
-            <li>美化和格式化配置文件</li>
-            <li>调试和阅读API响应数据</li>
-            <li>代码审查和文档编写</li>
-            <li>数据交换和传输前的格式准备</li>
-            <li>减少文件大小，提高传输效率</li>
+            <li>统一文档格式和大小写规范</li>
+            <li>清理从不同来源复制的文本内容</li>
+            <li>数据预处理和标准化</li>
+            <li>代码和配置文件的格式统一</li>
+            <li>提高文本质量和可读性</li>
           </ul>
         </div>
       </div>
@@ -250,14 +315,14 @@ defineOptions({
 const formatConverterStore = useFormatConverterStore();
 const { 
   activeTab,
-  isFormatMode,
-  sortKeys,
-  uppercaseKeywords,
   inputText,
   outputText,
   processing,
   errorMessage,
   formatTabs,
+  caseOptions,
+  whitespaceOptions,
+  encodingOptions,
   activeTabName,
   inputPlaceholder,
   hasInput,

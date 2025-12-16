@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "webtoolsgui",
+  "productName": "armory",
   "version": "0.1.0",
-  "identifier": "co.webtoolsgui",
+  "identifier": "co.armory",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,8 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "webtoolsgui",
-        "width": 1200,
+        "title": "armory",
+        "width": 1500,
         "height": 800
       }
     ],

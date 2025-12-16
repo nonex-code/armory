@@ -21,7 +21,7 @@
             :key="tab.id"
             class="tab flex-1" 
             :class="{ 'tab-active': activeTab === tab.id }"
-            @click="activeTab = tab.id"
+            @click="switchTab(tab.id)"
           >
             <span class="mr-2">{{ tab.icon }}</span>
             {{ tab.name }}
@@ -43,10 +43,10 @@
           <!-- 文本输入区域 -->
           <div class="form-control">
             <label class="label">
-              <span class="label-text">请输入要{{ isEncodeMode ? '编码' : '解码' }}的内容</span>
+              <span class="label-text">请输入要{{ currentStore.isEncodeMode ? '编码' : '解码' }}的内容</span>
             </label>
             <textarea 
-              v-model="inputText"
+              v-model="currentStore.inputText"
               class="textarea textarea-bordered h-64 w-full" 
               :placeholder="inputPlaceholder"
             ></textarea>
@@ -61,7 +61,8 @@
                 <input 
                   type="checkbox" 
                   class="toggle toggle-primary"
-                  v-model="isEncodeMode"
+                  v-model="currentStore.isEncodeMode"
+                  @change="toggleMode"
                 />
                 <span class="ml-2">编码</span>
               </div>
@@ -74,10 +75,10 @@
             <button 
               class="btn btn-primary" 
               @click="processText"
-              :disabled="!canProcess"
-              :class="{ 'loading': processing }"
+              :disabled="!currentStore.canProcess"
+              :class="{ 'loading': currentStore.processing }"
             >
-              {{ isEncodeMode ? '编码' : '解码' }}
+              {{ currentStore.isEncodeMode ? '编码' : '解码' }}
             </button>
           </div>
         </div>
@@ -92,14 +93,14 @@
               <button 
                 class="btn btn-sm btn-ghost" 
                 @click="copyOutput"
-                :disabled="!hasOutput"
+                :disabled="!currentStore.hasOutput"
               >
                 复制
               </button>
               <button 
                 class="btn btn-sm btn-ghost" 
                 @click="downloadOutput"
-                :disabled="!hasOutput"
+                :disabled="!currentStore.hasOutput"
               >
                 下载
               </button>
@@ -109,7 +110,7 @@
           <!-- 输出内容 -->
           <div class="form-control">
             <textarea 
-              v-model="outputText"
+              v-model="currentStore.outputText"
               class="textarea textarea-bordered h-64 w-full" 
               placeholder="处理结果将显示在这里"
               readonly
@@ -117,9 +118,9 @@
           </div>
           
           <!-- 错误信息 -->
-          <div v-if="errorMessage" class="alert alert-error mt-4">
+          <div v-if="currentStore.errorMessage" class="alert alert-error mt-4">
             <BaseIcon name="exclamation-circle" custom-class="stroke-current shrink-0 h-6 w-6" />
-            <span>{{ errorMessage }}</span>
+            <span>{{ currentStore.errorMessage }}</span>
           </div>
         </div>
       </div>
@@ -207,8 +208,11 @@
 </template>
 
 <script setup>
-import { storeToRefs } from 'pinia';
-import { useEncodingConverterStore } from '@/store/modules/tools/encoding/EncodingConverter';
+import { ref, computed, watch } from 'vue';
+import { useBase64ConverterStore } from '@/store/modules/tools/encoding/Base64Converter';
+import { useBase32ConverterStore } from '@/store/modules/tools/encoding/Base32Converter';
+import { useUrlConverterStore } from '@/store/modules/tools/encoding/UrlConverter';
+import { useHtmlConverterStore } from '@/store/modules/tools/encoding/HtmlConverter';
 import BaseIcon from '@/components/BaseIcon.vue';
 
 // 定义组件选项，确保keepalive能正常工作，并包含工具配置
@@ -229,28 +233,83 @@ defineOptions({
   }
 });
 
-// 使用store
-const store = useEncodingConverterStore();
-const {
-  activeTab,
-  isEncodeMode,
-  inputText,
-  outputText,
-  processing,
-  errorMessage,
-  encodingTabs,
-  activeTabName,
-  inputPlaceholder,
-  hasInput,
-  hasOutput,
-  canProcess,
-  hasError
-} = storeToRefs(store);
+// 编码类型标签页
+const encodingTabs = [
+  { id: 'base64', name: 'Base64', icon: '🔤' },
+  { id: 'base32', name: 'Base32', icon: '🔢' },
+  { id: 'url', name: 'URL', icon: '🔗' },
+  { id: 'html', name: 'HTML实体', icon: '🌐' }
+];
 
-const {
-  processText,
-  clearInput,
-  copyOutput,
-  downloadOutput
-} = store;
+// 当前激活的标签页
+const activeTab = ref('base64');
+
+// 各个编码类型的store
+const base64Store = useBase64ConverterStore();
+const base32Store = useBase32ConverterStore();
+const urlStore = useUrlConverterStore();
+const htmlStore = useHtmlConverterStore();
+
+// 根据当前标签页获取对应的store
+const currentStore = computed(() => {
+  switch (activeTab.value) {
+    case 'base64':
+      return base64Store;
+    case 'base32':
+      return base32Store;
+    case 'url':
+      return urlStore;
+    case 'html':
+      return htmlStore;
+    default:
+      return base64Store;
+  }
+});
+
+// 计算属性
+const activeTabName = computed(() => {
+  const tab = encodingTabs.find(t => t.id === activeTab.value);
+  return tab ? tab.name : '';
+});
+
+const inputPlaceholder = computed(() => {
+  const action = currentStore.value.isEncodeMode ? '编码' : '解码';
+  const type = activeTabName.value;
+  return `在此输入需要${type}${action}的内容...`;
+});
+
+// 切换标签页
+const switchTab = (tabId) => {
+  activeTab.value = tabId;
+};
+
+// 切换编码/解码模式
+const toggleMode = () => {
+  currentStore.value.toggleMode();
+};
+
+// 处理文本
+const processText = () => {
+  currentStore.value.processText();
+};
+
+// 清空输入
+const clearInput = () => {
+  currentStore.value.clearInput();
+};
+
+// 复制输出
+const copyOutput = () => {
+  currentStore.value.copyOutput();
+};
+
+// 下载输出
+const downloadOutput = () => {
+  currentStore.value.downloadOutput();
+};
+
+// 监听标签页切换，清空输出
+watch(activeTab, () => {
+  currentStore.value.clearInput();
+});
 </script>
