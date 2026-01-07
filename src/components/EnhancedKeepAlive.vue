@@ -24,7 +24,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
-import { useKeepAliveStore } from '@/store/modules/keepalive';
+import { useKeepAliveStore } from '@/store/modules/keepAlive';
 
 const props = defineProps({
   // 过渡动画名称
