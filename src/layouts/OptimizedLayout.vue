@@ -205,9 +205,7 @@ watch(searchQuery, searchTools);
               class="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity duration-200"
               @click="router.push('/')"
             >
-              <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-content font-bold shadow-lg">
-                A
-              </div>
+              <img src="/logo.svg" alt="Web Tools Armory" class="w-10 h-10 rounded-lg shadow-lg">
               <span class="text-sm font-semibold text-base-content hidden xs:inline">armory</span>
             </div>
             

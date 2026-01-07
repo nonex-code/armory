@@ -15,7 +15,7 @@ export default defineConfig(({mode}) => ({
 			registerType: 'autoUpdate',
 			includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
 			manifest: {
-				name: 'Armory Web Tools',
+				name: 'Web Tools Armory',
 				short_name: 'Armory',
 				description: 'A powerful web tools armory built with Vite + Vue 3',
 				theme_color: '#ffffff',
@@ -84,8 +84,8 @@ export default defineConfig(({mode}) => ({
 		}
 	},
 	server:{
-		host: "0.0.0.0",
-		port:9000,
+		// host: "0.0.0.0",
+		// port:9001,
 		// Vite 4+ 使用此配置来处理前端路由刷新问题
 		// 确保所有路由都回退到index.html
 		strictPort: true,
