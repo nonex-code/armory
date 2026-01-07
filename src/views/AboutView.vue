@@ -2,15 +2,15 @@
   <div class="about-page">
     <div class="container">
       <div class="page-header">
-        <h1 class="page-title">关于 WebTools</h1>
+        <h1 class="page-title">关于 armory</h1>
         <p class="page-subtitle">一站式在线工具集合</p>
       </div>
 
       <div class="about-content">
         <div class="about-card">
           <h2>项目简介</h2>
-          <p>WebTools 是一个功能丰富的在线工具集合，为开发者和普通用户提供各种实用工具，包括编码解码、加密解密、格式转换、生成器等功能。</p>
-          <p>我们的目标是创建一个简洁、高效、易用的工具平台，让您的日常工作更加便捷。</p>
+          <p>Armory 是一款功能丰富的纯 Web 工具库，为开发者和普通用户提供各种实用工具，包括编码解码、加密解密、格式转换、开发辅助等功能。</p>
+          <p>我们的目标是创建一个简洁、高效、易用的工具库，让您的日常工作与开发任务更加便捷。</p>
         </div>
 
         <div class="about-card">
@@ -59,11 +59,11 @@
             </div>
             <div class="version-item">
               <span class="label">更新时间：</span>
-              <span class="value">2023-12-01</span>
+              <span class="value">2025-12-01</span>
             </div>
             <div class="version-item">
               <span class="label">开发团队：</span>
-              <span class="value">WebTools Team</span>
+              <span class="value">armory Team</span>
             </div>
           </div>
         </div>
@@ -73,12 +73,8 @@
           <div class="contact-info">
             <p>如果您有任何问题或建议，欢迎联系我们：</p>
             <div class="contact-item">
-              <span class="contact-label">邮箱：</span>
-              <a href="mailto:contact@webtools.com" class="contact-value">contact@webtools.com</a>
-            </div>
-            <div class="contact-item">
               <span class="contact-label">GitHub：</span>
-              <a href="https://github.com/webtools/webtools" target="_blank" class="contact-value">github.com/webtools/webtools</a>
+              <a href="https://github.com/nonex-code/armory" target="_blank" class="contact-value">https://github.com/nonex-code/armory</a>
             </div>
           </div>
         </div>
@@ -89,7 +85,7 @@
 
 <script setup>
 // 页面元数据
-document.title = '关于 - WebTools';
+document.title = '关于 - armory';
 </script>
 
 <style scoped>

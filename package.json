@@ -1,11 +1,11 @@
 {
   "name": "armory",
-  "version": "1.1.0",
-  "description": "armory: A powerful web tools armory built with Vite + Vue 3 + Sass + Tailwind 4 + DaisyUI 5",
-  "author": "Martin Ille <ille.martin@gmail.com>",
+  "version": "1.0.0",
+  "description": "Armory 是一款功能丰富的纯 Web 工具库，为开发者和普通用户提供各种实用工具，包括编码解码、加密解密、格式转换、开发辅助等功能。",
+  "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yuzus/armory.git"
+    "url": "git+https://github.com/nonex-code/armory.git"
   },
   "license": "MIT",
   "type": "module",

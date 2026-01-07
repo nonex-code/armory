@@ -109,9 +109,9 @@ initRoutes().catch(error => {
 router.beforeEach(async (to, from, next) => {
   // 设置页面标题
   if (to.meta?.title) {
-    document.title = `${to.meta.title} - WebTools`;
+    document.title = `${to.meta.title} - armory`;
   } else {
-    document.title = 'WebTools';
+    document.title = 'armory';
   }
   
   // 检查是否是工具路由

@@ -181,8 +181,8 @@ onMounted(async () => {
   <div class="container mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
     <!-- 页面标题 -->
     <div class="mb-4 sm:mb-6">
-      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content">WebTools</h1>
-      <p class="text-base-content/70 mt-1 sm:mt-2 text-sm sm:text-base">一站式开发工具平台，提供编码、加密、格式转换等多种实用工具</p>
+      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content">armory</h1>
+      <p class="text-base-content/70 mt-1 sm:mt-2 text-sm sm:text-base">Armory 是一款功能丰富的纯 Web 工具库，为开发者和普通用户提供各种实用工具，包括编码解码、加密解密、格式转换、开发辅助等功能。</p>
     </div>
 
     <!-- 搜索栏 -->

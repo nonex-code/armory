@@ -447,12 +447,15 @@ watch(searchQuery, searchTools);
       <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div class="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
           <div class="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
-            © 2023 WebTools - 为开发者打造的实用工具集合
+            © 2025 armory - 为开发者打造的实用工具集合
           </div>
           <div class="flex flex-wrap justify-center gap-3 sm:gap-4 text-xs sm:text-sm">
-            <a href="#" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">关于</a>
-            <a href="#" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">帮助</a>
-            <a href="#" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">反馈</a>
+            <!-- 关于路由 -->
+            <router-link to="/about" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">关于</router-link>
+            <!-- 项目主页 -->
+            <a href="https://github.com/nonex-code/armory" target="_blank" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">帮助</a>
+            <!-- github issue -->
+            <a href="https://github.com/nonex-code/armory/issues" target="_blank" class="text-base-content/70 hover:text-primary transition-colors whitespace-nowrap">反馈</a>
           </div>
         </div>
       </div>
