@@ -271,11 +271,11 @@ defineOptions({
       name: '颜色选择器',
       description: '颜色选择工具，支持RGB、HEX、HSL等多种颜色格式的选取和转换',
       icon: '🎨',
-      category: 'developer',
+      category: 'generator',
       tags: ['颜色', '选择', 'rgb', 'hex', 'hsl', '开发工具'],
       enabled: true,
       isPopular: true,
-      order: 5
+      order: 1
     }
   }
 });

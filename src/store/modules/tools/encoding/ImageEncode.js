@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export const useImageEncodeStore = defineStore('imageEncode', () => {
-  // 状态
   const processing = ref(false);
   const errorMessage = ref('');
   const base64Output = ref('');
@@ -10,8 +9,17 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
   const isEncodeMode = ref(true);
   const imagePreview = ref('');
   const base64Input = ref('');
+  const imageInfo = ref(null);
+  const outputFormat = ref('png');
+  const includeDataPrefix = ref(true);
   
-  // 计算属性
+  const supportedFormats = ref([
+    { value: 'png', label: 'PNG' },
+    { value: 'jpeg', label: 'JPEG' },
+    { value: 'webp', label: 'WebP' },
+    { value: 'gif', label: 'GIF' }
+  ]);
+
   const isProcessing = computed(() => processing.value);
   const hasError = computed(() => errorMessage.value.length > 0);
   const hasOutput = computed(() => base64Output.value || decodedImage.value);
@@ -23,31 +31,84 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
       return base64Input.value.trim() && !processing.value;
     }
   });
-  
-  // 设置错误信息
+
   const setError = (message) => {
     errorMessage.value = message;
   };
-  
-  // 清除错误信息
+
   const clearError = () => {
     errorMessage.value = '';
   };
-  
-  // 清除输出
+
   const clearOutput = () => {
     base64Output.value = '';
     decodedImage.value = '';
+    imageInfo.value = null;
   };
-  
-  // 编码图片为Base64
-  const encodeImage = async (imageDataUrl) => {
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getImageInfo = (file, dataUrl) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          width: img.width,
+          height: img.height,
+          aspectRatio: (img.width / img.height).toFixed(2),
+          formattedSize: formatFileSize(file.size)
+        });
+      };
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    });
+  };
+
+  const encodeImage = async (imageDataUrl, file) => {
     processing.value = true;
     clearError();
     
     try {
-      // 图片已经是DataURL格式，只需要处理即可
-      base64Output.value = imageDataUrl;
+      if (file) {
+        imageInfo.value = await getImageInfo(file, imageDataUrl);
+      }
+      
+      if (outputFormat.value !== 'png' || !includeDataPrefix.value) {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = imageDataUrl;
+        });
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        const mimeType = `image/${outputFormat.value}`;
+        const quality = outputFormat.value === 'jpeg' ? 0.92 : undefined;
+        const dataUrl = canvas.toDataURL(mimeType, quality);
+        
+        if (includeDataPrefix.value) {
+          base64Output.value = dataUrl;
+        } else {
+          base64Output.value = dataUrl.split(',')[1] || dataUrl;
+        }
+      } else {
+        base64Output.value = imageDataUrl;
+      }
+      
       decodedImage.value = '';
     } catch (error) {
       setError(`编码失败: ${error.message}`);
@@ -56,27 +117,37 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
       processing.value = false;
     }
   };
-  
-  // 解码Base64为图片
+
   const decodeBase64 = async (base64String) => {
     processing.value = true;
     clearError();
     
     try {
-      // 验证Base64字符串是否是有效的图片格式
       if (!isValidImageBase64(base64String)) {
         throw new Error('无效的图片Base64字符串');
       }
       
-      // 如果Base64字符串没有前缀，添加默认的PNG前缀
       let imageDataUrl = base64String.trim();
       if (!imageDataUrl.startsWith('data:image/')) {
         imageDataUrl = `data:image/png;base64,${imageDataUrl}`;
       }
       
-      // 直接使用Base64字符串作为图片
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('无法加载图片，请检查Base64字符串是否正确'));
+        img.src = imageDataUrl;
+      });
+      
       decodedImage.value = imageDataUrl;
       base64Output.value = '';
+      
+      imageInfo.value = {
+        width: img.width,
+        height: img.height,
+        aspectRatio: (img.width / img.height).toFixed(2),
+        type: imageDataUrl.match(/data:image\/([^;]+)/)?.[1] || 'unknown'
+      };
     } catch (error) {
       setError(`解码失败: ${error.message}`);
       decodedImage.value = '';
@@ -84,8 +155,7 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
       processing.value = false;
     }
   };
-  
-  // 验证Base64字符串是否是有效的图片
+
   const isValidImageBase64 = (base64) => {
     if (!base64 || base64.trim().length === 0) {
       return false;
@@ -93,7 +163,6 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
     
     const trimmed = base64.trim();
     
-    // 检查是否包含有效的图片格式前缀
     const imagePrefixes = [
       'data:image/jpeg;base64,',
       'data:image/png;base64,',
@@ -104,101 +173,111 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
       'data:image/svg+xml;base64,'
     ];
     
-    // 如果有前缀，检查前缀是否有效
-    if (imagePrefixes.some(prefix => trimmed.startsWith(prefix))) {
+    if (imagePrefixes.some(prefix => trimmed.toLowerCase().startsWith(prefix.toLowerCase()))) {
       return true;
     }
     
-    // 如果没有前缀，检查是否是有效的Base64字符串
-    // Base64字符串应该只包含A-Z, a-z, 0-9, +, /, =字符
-    const base64Pattern = /^[A-Za-z0-9+/=]+$/;
+    const base64Pattern = /^[A-Za-z0-9+/=\s]+$/;
     return base64Pattern.test(trimmed);
   };
-  
-  // 复制Base64字符串
-  const copyBase64 = () => {
+
+  const copyBase64 = async () => {
     if (base64Output.value) {
-      navigator.clipboard.writeText(base64Output.value)
-        .then(() => {
-          // 可以添加toast通知
-          console.log('Base64已复制到剪贴板');
-        })
-        .catch(err => {
-          setError(`复制失败: ${err.message}`);
-        });
+      try {
+        await navigator.clipboard.writeText(base64Output.value);
+        return true;
+      } catch (err) {
+        setError(`复制失败: ${err.message}`);
+        return false;
+      }
+    }
+    return false;
+  };
+
+  const downloadBase64 = () => {
+    if (!base64Output.value) return false;
+    
+    try {
+      let dataUrl = base64Output.value;
+      if (!dataUrl.startsWith('data:')) {
+        dataUrl = `data:image/${outputFormat.value};base64,${dataUrl}`;
+      }
+      
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `image_${Date.now()}.${outputFormat.value}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return true;
+    } catch (err) {
+      setError(`下载失败: ${err.message}`);
+      return false;
     }
   };
-  
-  // 下载Base64字符串为文件
-  const downloadBase64 = () => {
-    if (!base64Output.value) return;
-    
-    const link = document.createElement('a');
-    link.href = base64Output.value;
-    link.download = `image_${new Date().getTime()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  
-  // 下载解码后的图片
+
   const downloadImage = () => {
-    if (!decodedImage.value) return;
+    if (!decodedImage.value) return false;
     
-    const link = document.createElement('a');
-    link.href = decodedImage.value;
-    link.download = `decoded_image_${new Date().getTime()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const link = document.createElement('a');
+      link.href = decodedImage.value;
+      const ext = decodedImage.value.match(/data:image\/([^;]+)/)?.[1] || 'png';
+      link.download = `decoded_image_${Date.now()}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return true;
+    } catch (err) {
+      setError(`下载失败: ${err.message}`);
+      return false;
+    }
   };
-  
-  // 处理文件上传
-  const handleFileUpload = (file) => {
+
+  const handleFileUpload = async (file) => {
     if (!file) return;
     
-    // 检查文件大小 (限制10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('图片大小不能超过10MB');
+    if (file.size > 20 * 1024 * 1024) {
+      setError('图片大小不能超过20MB');
       return;
     }
     
-    // 预览图片
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       imagePreview.value = e.target.result;
+      imageInfo.value = await getImageInfo(file, e.target.result);
     };
     reader.readAsDataURL(file);
   };
-  
-  // 清空图片预览
+
   const clearImage = () => {
     imagePreview.value = '';
+    imageInfo.value = null;
   };
-  
-  // 清空所有内容
+
   const clearAll = () => {
     imagePreview.value = '';
     base64Input.value = '';
     clearOutput();
     clearError();
   };
-  
-  // 处理图片
+
   const processImage = async () => {
     clearError();
     
     if (currentMode.value === 'encode') {
-      // 编码图片
-      await encodeImage(imagePreview.value);
+      await encodeImage(imagePreview.value, null);
     } else {
-      // 解码Base64
       await decodeBase64(base64Input.value);
     }
   };
-  
+
+  const loadExample = () => {
+    base64Input.value = 'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAADklEQVQI12Ng+M+AARUDJQARJQCv2gH5JwAAAABJRU5ErkJggg==';
+    return true;
+  };
+
   return {
-    // 状态
     processing,
     errorMessage,
     base64Output,
@@ -206,15 +285,17 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
     isEncodeMode,
     imagePreview,
     base64Input,
+    imageInfo,
+    outputFormat,
+    includeDataPrefix,
+    supportedFormats,
     
-    // 计算属性
     isProcessing,
     hasError,
     hasOutput,
     currentMode,
     canProcess,
     
-    // 方法
     setError,
     clearError,
     clearOutput,
@@ -226,6 +307,8 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
     processImage,
     copyBase64,
     downloadBase64,
-    downloadImage
+    downloadImage,
+    formatFileSize,
+    loadExample
   };
 });

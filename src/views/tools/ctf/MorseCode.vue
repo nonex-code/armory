@@ -131,12 +131,12 @@ defineOptions({
       id: 'morse-code',
       name: '摩斯电码工具',
       description: '摩斯电码编码和解码工具，支持文本和摩斯电码的相互转换',
-      category: 'encoding',
-      icon: '🔤',
-      tags: ['摩斯电码', '编码', '解码', '转换'],
+      category: 'ctf',
+      icon: '📡',
+      tags: ['摩斯电码', '编码', '解码', '转换', 'CTF'],
       enabled: true,
       isPopular: true,
-      order: 6
+      order: 1
     }
   }
 });

@@ -1,24 +1,42 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 export const useEncodingConverterStore = defineStore('encodingConverter', () => {
-  // 状态
   const activeTab = ref('base64');
-  const isEncodeMode = ref(true); // true为编码，false为解码
+  const isEncodeMode = ref(true);
   const inputText = ref('');
   const outputText = ref('');
   const processing = ref(false);
   const errorMessage = ref('');
+  const autoConvert = ref(false);
   
-  // 编码类型标签页
+  const urlOptions = ref({
+    encodeSpace: false,
+    encodeAll: false
+  });
+  
+  const hexOptions = ref({
+    uppercase: false,
+    separator: 'space'
+  });
+  
+  const unicodeOptions = ref({
+    format: 'escape'
+  });
+  
+  const base64Options = ref({
+    urlSafe: false
+  });
+  
   const encodingTabs = [
-    { id: 'base64', name: 'Base64', icon: '🔤' },
-    { id: 'base32', name: 'Base32', icon: '🔢' },
-    { id: 'url', name: 'URL', icon: '🔗' },
-    { id: 'html', name: 'HTML实体', icon: '🌐' }
+    { id: 'base64', name: 'Base64', icon: '🔤', description: 'Base64 编码/解码' },
+    { id: 'base32', name: 'Base32', icon: '🔢', description: 'Base32 编码/解码' },
+    { id: 'url', name: 'URL', icon: '🔗', description: 'URL 编码/解码' },
+    { id: 'html', name: 'HTML实体', icon: '🌐', description: 'HTML 实体编码/解码' },
+    { id: 'hex', name: 'Hex', icon: '🔢', description: '十六进制编码/解码' },
+    { id: 'unicode', name: 'Unicode', icon: '🌏', description: 'Unicode 编码/解码' }
   ];
   
-  // 计算属性
   const activeTabName = computed(() => {
     const tab = encodingTabs.find(t => t.id === activeTab.value);
     return tab ? tab.name : '';
@@ -35,37 +53,46 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   const canProcess = computed(() => hasInput.value && !processing.value);
   const hasError = computed(() => errorMessage.value.length > 0);
   
-  // Base32 编码字符集
+  const showOptions = computed(() => {
+    return ['url', 'hex', 'unicode', 'base64'].includes(activeTab.value);
+  });
+  
   const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   
-  // Base64 编码/解码
   const base64Encode = (text) => {
-    return btoa(unescape(encodeURIComponent(text)));
+    let result = btoa(unescape(encodeURIComponent(text)));
+    if (base64Options.value.urlSafe) {
+      result = result.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    return result;
   };
   
   const base64Decode = (text) => {
-    return decodeURIComponent(escape(atob(text)));
+    let str = text;
+    if (base64Options.value.urlSafe || str.indexOf('-') !== -1 || str.indexOf('_') !== -1) {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (str.length % 4) {
+        str += '=';
+      }
+    }
+    return decodeURIComponent(escape(atob(str)));
   };
   
-  // Base32 编码/解码
   const base32Encode = (text) => {
     const bytes = new TextEncoder().encode(text);
     let bits = '';
     let result = '';
     
-    // 将字节转换为二进制字符串
     for (let i = 0; i < bytes.length; i++) {
       bits += bytes[i].toString(2).padStart(8, '0');
     }
     
-    // 将二进制字符串按5位分组，转换为Base32字符
     for (let i = 0; i < bits.length; i += 5) {
       const chunk = bits.substr(i, 5).padEnd(5, '0');
       const index = parseInt(chunk, 2);
       result += base32Chars[index];
     }
     
-    // 添加填充字符
     const padding = (8 - (bits.length % 40)) % 8;
     if (padding > 0) {
       result = result.slice(0, -padding) + '='.repeat(padding);
@@ -75,11 +102,9 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   };
   
   const base32Decode = (text) => {
-    // 移除填充字符
     const cleanText = text.replace(/=/g, '');
     let bits = '';
     
-    // 将Base32字符转换为5位二进制
     for (let i = 0; i < cleanText.length; i++) {
       const index = base32Chars.indexOf(cleanText[i].toUpperCase());
       if (index === -1) {
@@ -88,7 +113,6 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
       bits += index.toString(2).padStart(5, '0');
     }
     
-    // 将二进制字符串按8位分组，转换为字节
     const bytes = [];
     for (let i = 0; i < bits.length; i += 8) {
       if (i + 8 <= bits.length) {
@@ -100,16 +124,30 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
     return new TextDecoder().decode(new Uint8Array(bytes));
   };
   
-  // URL 编码/解码
   const urlEncode = (text) => {
-    return encodeURIComponent(text);
+    if (urlOptions.value.encodeAll) {
+      return Array.from(text)
+        .map(char => {
+          const code = char.charCodeAt(0);
+          return '%' + code.toString(16).toUpperCase().padStart(2, '0');
+        })
+        .join('');
+    }
+    
+    let result = encodeURIComponent(text);
+    if (urlOptions.value.encodeSpace) {
+      result = result.replace(/%20/g, '%20');
+    } else {
+      result = result.replace(/%20/g, '+');
+    }
+    return result;
   };
   
   const urlDecode = (text) => {
-    return decodeURIComponent(text);
+    let str = text.replace(/\+/g, ' ');
+    return decodeURIComponent(str);
   };
   
-  // HTML 实体编码/解码
   const htmlEncode = (text) => {
     const div = document.createElement('div');
     div.textContent = text;
@@ -122,9 +160,87 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
     return div.textContent || div.innerText || '';
   };
   
-  // 处理文本
+  const hexEncode = (text) => {
+    const bytes = new TextEncoder().encode(text);
+    const separator = hexOptions.value.separator === 'none' ? '' : 
+                      hexOptions.value.separator === 'colon' ? ':' : ' ';
+    
+    let result = Array.from(bytes)
+      .map(byte => {
+        const hex = byte.toString(16);
+        return hexOptions.value.uppercase ? hex.toUpperCase().padStart(2, '0') : hex.padStart(2, '0');
+      })
+      .join(separator);
+    
+    return result;
+  };
+  
+  const hexDecode = (text) => {
+    const hexStr = text.replace(/[\s:]/g, '');
+    if (!/^[0-9a-fA-F]*$/.test(hexStr)) {
+      throw new Error('无效的十六进制字符');
+    }
+    if (hexStr.length % 2 !== 0) {
+      throw new Error('十六进制字符串长度必须为偶数');
+    }
+    const bytes = [];
+    for (let i = 0; i < hexStr.length; i += 2) {
+      bytes.push(parseInt(hexStr.substr(i, 2), 16));
+    }
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  };
+  
+  const unicodeEncode = (text) => {
+    const format = unicodeOptions.value.format;
+    
+    return Array.from(text)
+      .map(char => {
+        const code = char.codePointAt(0);
+        
+        switch (format) {
+          case 'escape':
+            if (code > 0xFFFF) {
+              return `\\u{${code.toString(16).toUpperCase()}}`;
+            }
+            return `\\u${code.toString(16).toUpperCase().padStart(4, '0')}`;
+          case 'html':
+            return `&#${code};`;
+          case 'hex':
+            return `\\x${code.toString(16).toUpperCase().padStart(2, '0')}`;
+          case 'codepoint':
+            return `U+${code.toString(16).toUpperCase().padStart(4, '0')}`;
+          default:
+            return `\\u${code.toString(16).toUpperCase().padStart(4, '0')}`;
+        }
+      })
+      .join('');
+  };
+  
+  const unicodeDecode = (text) => {
+    return text
+      .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => 
+        String.fromCodePoint(parseInt(hex, 16))
+      )
+      .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => 
+        String.fromCharCode(parseInt(hex, 16))
+      )
+      .replace(/&#(\d+);/g, (_, code) => 
+        String.fromCodePoint(parseInt(code, 10))
+      )
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => 
+        String.fromCodePoint(parseInt(hex, 16))
+      )
+      .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => 
+        String.fromCharCode(parseInt(hex, 16))
+      )
+      .replace(/U\+([0-9a-fA-F]{4,})/g, (_, hex) => 
+        String.fromCodePoint(parseInt(hex, 16))
+      );
+  };
+  
   const processText = async () => {
     if (!inputText.value || !inputText.value.trim()) {
+      outputText.value = '';
       return;
     }
     
@@ -155,6 +271,16 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
             ? htmlEncode(inputText.value) 
             : htmlDecode(inputText.value);
           break;
+        case 'hex':
+          result = isEncodeMode.value 
+            ? hexEncode(inputText.value) 
+            : hexDecode(inputText.value);
+          break;
+        case 'unicode':
+          result = isEncodeMode.value 
+            ? unicodeEncode(inputText.value) 
+            : unicodeDecode(inputText.value);
+          break;
       }
       
       outputText.value = result;
@@ -166,27 +292,25 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
     }
   };
   
-  // 清空输入
   const clearInput = () => {
     inputText.value = '';
     outputText.value = '';
     errorMessage.value = '';
   };
   
-  // 复制输出
-  const copyOutput = () => {
+  const copyOutput = async () => {
     if (outputText.value) {
-      navigator.clipboard.writeText(outputText.value)
-        .then(() => {
-          // 这里可以添加一个toast通知
-        })
-        .catch(err => {
-          console.error('复制失败:', err);
-        });
+      try {
+        await navigator.clipboard.writeText(outputText.value);
+        return true;
+      } catch (err) {
+        console.error('复制失败:', err);
+        return false;
+      }
     }
+    return false;
   };
   
-  // 下载输出
   const downloadOutput = () => {
     if (!outputText.value) return;
     
@@ -201,28 +325,84 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
     URL.revokeObjectURL(url);
   };
   
+  const switchTab = (tabId) => {
+    activeTab.value = tabId;
+    outputText.value = '';
+    errorMessage.value = '';
+    if (autoConvert.value && inputText.value.trim()) {
+      processText();
+    }
+  };
+  
+  const toggleMode = () => {
+    isEncodeMode.value = !isEncodeMode.value;
+    outputText.value = '';
+    errorMessage.value = '';
+    if (autoConvert.value && inputText.value.trim()) {
+      processText();
+    }
+  };
+  
+  const swapInputOutput = () => {
+    if (!outputText.value) return;
+    const temp = inputText.value;
+    inputText.value = outputText.value;
+    outputText.value = temp;
+    isEncodeMode.value = !isEncodeMode.value;
+    errorMessage.value = '';
+    if (autoConvert.value && inputText.value.trim()) {
+      processText();
+    }
+  };
+  
+  const toggleAutoConvert = () => {
+    autoConvert.value = !autoConvert.value;
+    if (autoConvert.value && inputText.value.trim()) {
+      processText();
+    }
+  };
+  
+  watch([urlOptions, hexOptions, unicodeOptions, base64Options], () => {
+    if (autoConvert.value && inputText.value.trim()) {
+      processText();
+    }
+  }, { deep: true });
+  
+  watch(inputText, () => {
+    if (autoConvert.value && inputText.value.trim()) {
+      processText();
+    }
+  });
+  
   return {
-    // 状态
     activeTab,
     isEncodeMode,
     inputText,
     outputText,
     processing,
     errorMessage,
+    autoConvert,
     encodingTabs,
+    urlOptions,
+    hexOptions,
+    unicodeOptions,
+    base64Options,
     
-    // 计算属性
     activeTabName,
     inputPlaceholder,
     hasInput,
     hasOutput,
     canProcess,
     hasError,
+    showOptions,
     
-    // 方法
     processText,
     clearInput,
     copyOutput,
-    downloadOutput
+    downloadOutput,
+    switchTab,
+    toggleMode,
+    swapInputOutput,
+    toggleAutoConvert
   };
 });

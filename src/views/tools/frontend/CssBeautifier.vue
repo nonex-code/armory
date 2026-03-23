@@ -254,12 +254,12 @@ defineOptions({
       id: 'css-beautifier',
       name: 'CSS美化工具',
       description: 'CSS代码格式化工具，支持CSS、SCSS、LESS等样式语言的格式化和美化',
-      icon: '💻',
-      category: 'developer',
+      icon: '🎨',
+      category: 'data',
       tags: ['css', 'scss', 'less', '美化', '格式化', '前端', '开发工具'],
       enabled: true,
       isPopular: true,
-      order: 1
+      order: 5
     }
   }
 })
