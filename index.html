@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 	<meta charset="UTF-8"/>
 	<link rel="icon" type="image/svg+xml" href="/logo.svg"/>
@@ -24,9 +24,20 @@
 				console.error('Error setting theme:', e);
 			}
 		})();
+
+		// GitHub Pages SPA 回退：恢复 404.html 暂存的原始地址
+		(function() {
+			try {
+				const redirect = sessionStorage.getItem('spa-redirect');
+				if (redirect && redirect !== window.location.href) {
+					sessionStorage.removeItem('spa-redirect');
+					window.history.replaceState(null, '', redirect);
+				}
+			} catch (e) { /* ignore */ }
+		})();
 	</script>
-  <script type="module" crossorigin src="/assets/main-B9o_rbHp.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-fbxoLMEN.css">
+  <script type="module" crossorigin src="/assets/main-0fjQXP8D.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-gVghbDql.css">
 <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
 <body class="bg-base-100">
 <div id="app"></div>
