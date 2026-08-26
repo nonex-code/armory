@@ -28,25 +28,43 @@ export const useRegexTesterStore = defineStore('regexTester', () => {
     { name: '密码', pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[a-zA-Z\\d]{8,}$' }
   ]);
 
+  // HTML 转义（用于安全高亮，防止 XSS）
+  const escapeHtml = (str) => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
   // 计算属性
   const commonRegex = computed(() => commonPatterns.value);
 
   const highlightedText = computed(() => {
     if (!testResult.value || !testResult.value.isValid || !testResult.value.matches.length) {
-      return testText.value;
+      // 无匹配时也要转义，防止原文中的 HTML 被 v-html 执行
+      return escapeHtml(testText.value);
     }
     
-    let highlighted = testText.value;
-    const matches = [...testResult.value.matches].sort((a, b) => b.index - a.index);
+    // 按原文本区间分段构建：先转义再插入 mark，避免 index 偏移与 XSS
+    const matches = [...testResult.value.matches].sort((a, b) => a.index - b.index);
+    let result = '';
+    let cursor = 0;
     
     matches.forEach(match => {
-      const before = highlighted.substring(0, match.index);
-      const matched = highlighted.substring(match.index, match.index + match.value.length);
-      const after = highlighted.substring(match.index + match.value.length);
-      highlighted = `${before}<mark class="bg-yellow-300 text-black">${matched}</mark>${after}`;
+      if (match.index > cursor) {
+        result += escapeHtml(testText.value.slice(cursor, match.index));
+      }
+      result += `<mark class="bg-yellow-300 text-black">${escapeHtml(match.value)}</mark>`;
+      cursor = match.index + match.value.length;
     });
     
-    return highlighted;
+    if (cursor < testText.value.length) {
+      result += escapeHtml(testText.value.slice(cursor));
+    }
+    
+    return result;
   });
 
   // 方法
@@ -58,6 +76,19 @@ export const useRegexTesterStore = defineStore('regexTester', () => {
     if (flags.value.m) newFlags += 'm';
     if (flags.value.u) newFlags += 'u';
     regexFlags.value = newFlags;
+  };
+
+  // 粗略检测潜在的灾难性回溯模式（嵌套量词），仅作提示
+  const detectReDoSRisk = (pattern) => {
+    // 如 (a+)+、(a*)*、([ab]+)* 等嵌套量词结构
+    if (/\([^()]*[+*][^()]*\)\s*[+*?]/.test(pattern)) {
+      return true;
+    }
+    // 如 a** 或 a*+ 等
+    if (/[+*?]\s*[+*?]/.test(pattern)) {
+      return true;
+    }
+    return false;
   };
 
   // 测试正则表达式
@@ -86,17 +117,38 @@ export const useRegexTesterStore = defineStore('regexTester', () => {
       const regex = new RegExp(regexPattern.value, regexFlags.value);
       const matches = [];
       let match;
+      const MAX_MATCHES = 1000;
+      const MAX_TEXT_LENGTH = 100000; // 100KB 上限，防止大文本 + 复杂正则卡死页面
+      
+      const text = testText.value.length > MAX_TEXT_LENGTH
+        ? testText.value.slice(0, MAX_TEXT_LENGTH)
+        : testText.value;
       
       if (flags.value.g) {
-        while ((match = regex.exec(testText.value)) !== null) {
+        let truncated = false;
+        while ((match = regex.exec(text)) !== null) {
           matches.push({
             value: match[0],
             index: match.index,
             groups: match.slice(1)
           });
+          if (matches.length >= MAX_MATCHES) {
+            truncated = true;
+            break;
+          }
+        }
+        if (truncated) {
+          testResult.value = {
+            isValid: true,
+            matches,
+            groups: [],
+            error: null,
+            truncated: true
+          };
+          return;
         }
       } else {
-        match = regex.exec(testText.value);
+        match = regex.exec(text);
         if (match) {
           matches.push({
             value: match[0],
@@ -109,19 +161,28 @@ export const useRegexTesterStore = defineStore('regexTester', () => {
       // 提取分组信息
       const groups = [];
       if (matches.length > 0 && matches[0].groups.length > 0) {
-        for (let i = 0; i < matches[0].groups.length; i++) {
+        const namedGroups = matches[0].groups;
+        for (let i = 0; i < namedGroups.length; i++) {
           groups.push({
             pattern: `组 ${i + 1}`,
-            value: matches[0].groups[i]
+            value: namedGroups[i]
           });
         }
+        // 命名分组（如果存在）
+        if (matches[0].groups.groups && typeof matches[0].groups.groups === 'object') {
+          // exec 的命名分组在 match.groups 中，但这里保存的是 slice(1) 数组，命名分组无法直接获取
+        }
       }
+      
+      const riskWarning = detectReDoSRisk(regexPattern.value)
+        ? '该正则包含嵌套量词，对较长文本可能造成性能问题，建议简化。'
+        : null;
       
       testResult.value = {
         isValid: true,
         matches,
         groups,
-        error: null
+        error: riskWarning
       };
     } catch (error) {
       testResult.value = {
@@ -136,20 +197,34 @@ export const useRegexTesterStore = defineStore('regexTester', () => {
   // 应用预设模式
   const applyPreset = (preset) => {
     regexPattern.value = preset.pattern;
-    // 自动测试
-    if (testText.value) {
-      testRegex();
-    }
+    // 自动测试由 watch 触发，避免重复执行
   };
 
-  // 复制正则表达式
-  const copyRegex = () => {
+  // 复制正则表达式（async + 非安全上下文降级）
+  const copyRegex = async () => {
     if (!regexPattern.value) return false;
     
     const regexWithFlags = `/${regexPattern.value}/${regexFlags.value}`;
-    return navigator.clipboard.writeText(regexWithFlags)
-      .then(() => true)
-      .catch(() => false);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(regexWithFlags);
+      } else {
+        // 非安全上下文（http）降级方案
+        const textarea = document.createElement('textarea');
+        textarea.value = regexWithFlags;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!ok) return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('复制失败:', error);
+      return false;
+    }
   };
 
   // 清空所有内容
@@ -166,14 +241,34 @@ export const useRegexTesterStore = defineStore('regexTester', () => {
     };
   };
 
-  // 监听标志变化
-  watch(flags, updateFlags, { deep: true });
+  // 同步标志状态：复选框 ↔ 手输 flags 单一数据源
+  let syncingFlags = false;
 
-  // 监听正则表达式或测试文本变化，自动测试
+  watch(flags, () => {
+    if (syncingFlags) return;
+    updateFlags();
+  }, { deep: true });
+
+  watch(regexFlags, (val) => {
+    syncingFlags = true;
+    flags.value = {
+      g: val.includes('g'),
+      i: val.includes('i'),
+      m: val.includes('m'),
+      u: val.includes('u')
+    };
+    syncingFlags = false;
+  });
+
+  // 监听正则表达式或测试文本变化，自动测试（防抖，避免每击键触发）
+  let testTimer = null;
   watch([regexPattern, regexFlags, testText], () => {
-    if (regexPattern.value && testText.value) {
-      testRegex();
-    }
+    clearTimeout(testTimer);
+    testTimer = setTimeout(() => {
+      if (regexPattern.value && testText.value) {
+        testRegex();
+      }
+    }, 300);
   });
 
   return {

@@ -45,18 +45,20 @@ export const useSqlFormatterStore = defineStore('sqlFormatter', () => {
     liveFormatDelay: 1000 // 延迟时间（毫秒）
   });
 
-  // SQL方言选项
+  // SQL方言选项（与 sql-formatter v15 实际支持的方言一致）
   const sqlDialects = [
     { value: 'sql', label: '标准 SQL', description: '通用标准SQL语法' },
     { value: 'mysql', label: 'MySQL', description: 'MySQL数据库语法' },
     { value: 'postgresql', label: 'PostgreSQL', description: 'PostgreSQL数据库语法' },
-    { value: 'sqlserver', label: 'SQL Server', description: 'Microsoft SQL Server语法' },
-    { value: 'oracle', label: 'Oracle', description: 'Oracle数据库语法' },
-    { value: 'cassandra', label: 'Cassandra', description: 'Apache Cassandra CQL语法' },
+    { value: 'transactsql', label: 'SQL Server', description: 'Microsoft SQL Server (T-SQL)语法' },
+    { value: 'plsql', label: 'PL/SQL', description: 'Oracle PL/SQL语法' },
     { value: 'mariadb', label: 'MariaDB', description: 'MariaDB数据库语法' },
     { value: 'bigquery', label: 'BigQuery', description: 'Google BigQuery语法' },
     { value: 'sqlite', label: 'SQLite', description: 'SQLite数据库语法' },
-    { value: 'plsql', label: 'PL/SQL', description: 'Oracle PL/SQL语法' }
+    { value: 'spark', label: 'Spark SQL', description: 'Apache Spark SQL语法' },
+    { value: 'snowflake', label: 'Snowflake', description: 'Snowflake SQL语法' },
+    { value: 'db2', label: 'DB2', description: 'IBM DB2语法' },
+    { value: 'hive', label: 'Hive', description: 'Apache Hive SQL语法' }
   ];
 
   // 示例SQL语句库
@@ -110,7 +112,7 @@ FROM user_stats
 WHERE order_count > 0
 ORDER BY total_amount DESC`,
     
-    sqlserver: `SELECT 
+    transactsql: `SELECT 
   c.CustomerID,
   c.CustomerName,
   COUNT(o.OrderID) AS OrderCount,
@@ -129,47 +131,6 @@ HAVING
   COUNT(o.OrderID) >= 5
 ORDER BY 
   TotalSpent DESC`,
-    
-    oracle: `SELECT 
-  e.employee_id,
-  e.first_name,
-  e.last_name,
-  d.department_name,
-  COUNT(o.order_id) AS order_count,
-  SUM(o.order_total) AS total_sales,
-  RANK() OVER (PARTITION BY e.department_id ORDER BY SUM(o.order_total) DESC) AS dept_rank
-FROM 
-  employees e
-  JOIN departments d ON e.department_id = d.department_id
-  LEFT JOIN orders o ON e.employee_id = o.sales_rep_id
-WHERE 
-  e.hire_date > ADD_MONTHS(SYSDATE, -12)
-  AND o.order_date BETWEEN TRUNC(SYSDATE, 'YEAR') AND SYSDATE
-GROUP BY 
-  e.employee_id, e.first_name, e.last_name, d.department_name
-HAVING 
-  COUNT(o.order_id) > 0
-ORDER BY 
-  d.department_name, total_sales DESC`,
-    
-    cassandra: `SELECT 
-  user_id, 
-  email, 
-  username, 
-  created_at, 
-  last_login,
-  COUNT(*) AS login_count
-FROM 
-  user_activity
-WHERE 
-  user_id IN (
-    SELECT user_id FROM users WHERE account_status = 'active'
-  )
-  AND event_type = 'login'
-  AND created_at > toDate(now()) - 30
-GROUP BY 
-  user_id, email, username, created_at, last_login
-ALLOW FILTERING`,
     
     mariadb: `SELECT 
   p.id,
@@ -290,15 +251,15 @@ END;`
       const startTime = performance.now();
       formatStats.value.originalSize = inputSql.value.length;
 
-      // 准备格式化选项
+      // 准备格式化选项（与 sql-formatter v15 的选项一致）
       const formatOptions = {
         language: options.value.language,
         useTabs: options.value.useTabs,
-        indent: options.value.useTabs ? '\t' : ' '.repeat(options.value.indentSize),
-        keywordCase: options.value.keywordCase,
-        linesBetweenQueries: options.value.linesBetweenQueries,
+        tabWidth: Math.min(Math.max(parseInt(options.value.indentSize, 10) || 2, 1), 8),
+        keywordCase: options.value.keywordCase === 'capitalize' ? 'upper' : options.value.keywordCase,
+        linesBetweenQueries: Math.max(parseInt(options.value.linesBetweenQueries, 10) || 0, 0),
         denseOperators: options.value.denseOperators,
-        semicolonNewline: options.value.semicolonNewline,
+        newlineBeforeSemicolon: options.value.semicolonNewline,
         logicalOperatorNewline: options.value.logicalOperatorNewline
       };
 
@@ -308,7 +269,12 @@ END;`
       // 计算格式化统计
       const endTime = performance.now();
       formatStats.value.formattedSize = outputSql.value.length;
-      formatStats.value.formatTime = endTime - startTime;
+      formatStats.value.formatTime = Math.round(endTime - startTime);
+      formatStats.value.originalLines = inputSql.value.split('\n').length;
+      formatStats.value.formattedLines = outputSql.value.split('\n').length;
+      formatStats.value.compressionRatio = inputSql.value.length > 0
+        ? Math.max(0, Math.round((1 - outputSql.value.length / inputSql.value.length) * 100))
+        : 0;
       
     } catch (error) {
       console.error('格式化SQL时出错:', error);
@@ -339,11 +305,11 @@ END;`
       const compressOptions = {
         language: options.value.language,
         useTabs: false,
-        indent: '',
+        tabWidth: 2,
         keywordCase: 'preserve',
         linesBetweenQueries: 0,
         denseOperators: true,
-        semicolonNewline: false,
+        newlineBeforeSemicolon: false,
         logicalOperatorNewline: 'after'
       };
 
@@ -352,7 +318,12 @@ END;`
       // 计算格式化统计
       const endTime = performance.now();
       formatStats.value.formattedSize = outputSql.value.length;
-      formatStats.value.formatTime = endTime - startTime;
+      formatStats.value.formatTime = Math.round(endTime - startTime);
+      formatStats.value.originalLines = inputSql.value.split('\n').length;
+      formatStats.value.formattedLines = outputSql.value.split('\n').length;
+      formatStats.value.compressionRatio = inputSql.value.length > 0
+        ? Math.max(0, Math.round((1 - outputSql.value.length / inputSql.value.length) * 100))
+        : 0;
       
     } catch (error) {
       console.error('压缩SQL时出错:', error);

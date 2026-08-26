@@ -11,6 +11,10 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
   const hashResults = ref({});
   const processing = ref(false);
   const errorMessage = ref('');
+  // 文件是否正在读取中（防止读取完成前误算旧数据）
+  const isFileLoading = ref(false);
+  // 文件字节内容（按二进制读取，保证任意文件哈希正确）
+  const fileWordArray = ref(null);
   
   // 哈希算法列表
   const hashAlgorithms = ref([
@@ -23,7 +27,8 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
   
   // 计算属性
   const hasInput = computed(() => {
-    return inputType.value === 'text' ? inputText.value.trim() : uploadedFile.value;
+    if (inputType.value === 'text') return !!inputText.value.trim();
+    return !!uploadedFile.value;
   });
   
   const hasResults = computed(() => {
@@ -31,7 +36,12 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
   });
   
   const canCalculate = computed(() => {
-    return hasInput.value && selectedAlgorithms.value.length > 0;
+    if (!selectedAlgorithms.value.length) return false;
+    if (inputType.value === 'file') {
+      // 文件模式下必须等文件读取完成，避免算到旧数据
+      return !!uploadedFile.value && !isFileLoading.value && !!fileWordArray.value;
+    }
+    return !!inputText.value.trim();
   });
   
   // 方法
@@ -40,6 +50,8 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
     const file = event.target.files[0];
     if (!file) {
       uploadedFile.value = null;
+      fileWordArray.value = null;
+      isFileLoading.value = false;
       return;
     }
     
@@ -47,24 +59,42 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
     readUploadedFile();
   };
   
-  // 读取上传的文件
+  // 读取上传的文件（按二进制读取，哈希结果与 md5sum 等命令行工具一致）
   const readUploadedFile = () => {
     if (!uploadedFile.value) return;
     
+    isFileLoading.value = true;
+    errorMessage.value = '';
+    fileWordArray.value = null;
+    
     const reader = new FileReader();
     reader.onload = (e) => {
-      inputText.value = e.target.result;
+      try {
+        const buffer = e.target.result;
+        const bytes = new Uint8Array(buffer);
+        fileWordArray.value = CryptoJS.lib.WordArray.create(bytes);
+        isFileLoading.value = false;
+      } catch (error) {
+        isFileLoading.value = false;
+        errorMessage.value = `文件读取失败: ${error.message}`;
+      }
     };
     reader.onerror = () => {
-      errorMessage.value = '文件读取失败';
+      isFileLoading.value = false;
+      fileWordArray.value = null;
+      errorMessage.value = '文件读取失败，请重试';
     };
-    reader.readAsText(uploadedFile.value);
+    reader.readAsArrayBuffer(uploadedFile.value);
   };
   
   // 计算哈希值
   const calculateHash = async () => {
-    if (!hasInput.value) {
-      errorMessage.value = '请输入文本或上传文件';
+    if (!canCalculate.value) {
+      if (inputType.value === 'file' && isFileLoading.value) {
+        errorMessage.value = '文件正在读取中，请稍候...';
+      } else {
+        errorMessage.value = '请输入文本或上传文件';
+      }
       return;
     }
     
@@ -82,7 +112,8 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const results = {};
-      const text = inputText.value;
+      // 文件模式使用按字节读取的内容，文本模式使用字符串
+      const source = inputType.value === 'file' ? fileWordArray.value : inputText.value;
       
       // 计算每种选定的哈希算法
       for (const algorithm of selectedAlgorithms.value) {
@@ -90,19 +121,19 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
         
         switch (algorithm) {
           case 'md5':
-            hash = CryptoJS.MD5(text).toString();
+            hash = CryptoJS.MD5(source).toString();
             break;
           case 'sha1':
-            hash = CryptoJS.SHA1(text).toString();
+            hash = CryptoJS.SHA1(source).toString();
             break;
           case 'sha256':
-            hash = CryptoJS.SHA256(text).toString();
+            hash = CryptoJS.SHA256(source).toString();
             break;
           case 'sha512':
-            hash = CryptoJS.SHA512(text).toString();
+            hash = CryptoJS.SHA512(source).toString();
             break;
           case 'sha3':
-            hash = CryptoJS.SHA3(text).toString();
+            hash = CryptoJS.SHA3(source).toString();
             break;
           default:
             continue;
@@ -123,6 +154,8 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
   const clearInput = () => {
     inputText.value = '';
     uploadedFile.value = null;
+    fileWordArray.value = null;
+    isFileLoading.value = false;
     hashResults.value = {};
     errorMessage.value = '';
   };
@@ -194,6 +227,7 @@ export const useHashCalculatorStore = defineStore('hashCalculator', () => {
     hashResults,
     processing,
     errorMessage,
+    isFileLoading,
     hashAlgorithms,
     
     // 计算属性

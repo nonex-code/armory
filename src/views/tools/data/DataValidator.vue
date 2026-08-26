@@ -142,14 +142,6 @@
 import { ref, watch } from 'vue';
 import BaseIcon from '@/components/BaseIcon.vue';
 
-// 定义组件选项
-const props = defineProps({
-  toolId: {
-    type: String,
-    default: 'data-validator'
-  }
-});
-
 // 定义工具配置
 defineOptions({
   name: 'DataValidatorPage',
@@ -157,10 +149,10 @@ defineOptions({
     tool: {
       id: 'data-validator',
       name: '数据验证工具',
-      description: '数据验证工具，支持验证JSON、XML、YAML等数据格式的合法性和完整性',
+      description: '数据验证工具，支持验证邮箱、手机号、URL、JSON、IP、日期、数字等数据格式',
       category: 'data',
       icon: '📊',
-      tags: ['数据', '验证', 'json', 'xml', 'yaml', '数据处理'],
+      tags: ['数据', '验证', 'json', '邮箱', 'ip', '日期', '数字', '数据处理'],
       enabled: true,
       isPopular: true,
       order: 6
@@ -173,11 +165,23 @@ const inputData = ref('');
 const validationTypes = ref(['email', 'phone', 'url']);
 const validationResults = ref([]);
 
-// 监听全选选项
-watch(() => validationTypes.value.includes('all'), (isAllSelected) => {
-  if (isAllSelected) {
-    validationTypes.value = ['email', 'phone', 'url', 'json', 'ip', 'date', 'number', 'all'];
+// 所有验证类型（不含'all'本身）
+const allValidationTypes = ['email', 'phone', 'url', 'json', 'ip', 'date', 'number'];
+const defaultValidationTypes = ['email', 'phone', 'url'];
+
+// 记录上一次的选项，用于判断是否从"全选"状态取消
+let prevValidationTypes = [...validationTypes.value];
+
+// 监听全选选项：勾选'all'时全选；从全选状态取消任意项时恢复默认三项
+watch(validationTypes, (newTypes) => {
+  if (newTypes.includes('all')) {
+    if (!allValidationTypes.every(t => newTypes.includes(t))) {
+      validationTypes.value = [...allValidationTypes, 'all'];
+    }
+  } else if (prevValidationTypes.includes('all')) {
+    validationTypes.value = [...defaultValidationTypes];
   }
+  prevValidationTypes = [...validationTypes.value];
 });
 
 // 验证函数
@@ -193,24 +197,27 @@ const validateData = () => {
   // 邮箱验证
   if (validationTypes.value.includes('email')) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // 拒绝连续点号、开头/结尾点号（如 a@b..c）
+    const isValid = emailRegex.test(data) && !/\.\./.test(data) && !data.startsWith('.') && !data.endsWith('.');
     results.push({
       type: '邮箱',
-      isValid: emailRegex.test(data)
+      isValid: isValid
     });
   }
 
   // 手机号验证（中国）
   if (validationTypes.value.includes('phone')) {
+    // 先去除常见分隔符（空格、横杠）再验证
     const phoneRegex = /^1[3-9]\d{9}$/;
     results.push({
       type: '手机号',
-      isValid: phoneRegex.test(data)
+      isValid: phoneRegex.test(data.replace(/[\s-]/g, ''))
     });
   }
 
-  // URL验证
+  // URL验证（无嵌套量词，避免灾难性回溯）
   if (validationTypes.value.includes('url')) {
-    const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/;
+    const urlRegex = /^(https?:\/\/)?[\da-z][\da-z.-]*\.[a-z.]{2,6}([\/\w .-]*)\/?$/i;
     results.push({
       type: 'URL',
       isValid: urlRegex.test(data)
@@ -239,7 +246,9 @@ const validateData = () => {
     if (ipRegex.test(data)) {
       const parts = data.split('.');
       const isValid = parts.every(part => {
-        const num = parseInt(part);
+        // 拒绝前导零（如 001.1.1.1）
+        if (part.length > 1 && part.startsWith('0')) return false;
+        const num = parseInt(part, 10);
         return num >= 0 && num <= 255;
       });
       results.push({
@@ -254,12 +263,24 @@ const validateData = () => {
     }
   }
 
-  // 日期验证
+  // 日期验证（严格校验年月日范围，拒绝回绕日期如 2023/02/30）
   if (validationTypes.value.includes('date')) {
-    const date = new Date(data);
+    const dateRegex = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/;
+    const match = dateRegex.exec(data);
+    let isValid = false;
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      const day = parseInt(match[3], 10);
+      if (month >= 1 && month <= 12 && day >= 1) {
+        // 当月最大天数（Date.UTC 的月份从 0 开始，month 传给下一月 0 即当月最后一天）
+        const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        isValid = day <= daysInMonth;
+      }
+    }
     results.push({
       type: '日期',
-      isValid: date.toString() !== 'Invalid Date'
+      isValid: isValid
     });
   }
 
@@ -280,13 +301,17 @@ const clearData = () => {
   validationResults.value = [];
 };
 
-// 自动验证
+// 自动验证（输入变化时防抖 300ms，避免高频触发）
+let validateTimer = null;
 watch(inputData, (newValue) => {
-  if (newValue.trim()) {
-    validateData();
-  } else {
-    validationResults.value = [];
-  }
+  clearTimeout(validateTimer);
+  validateTimer = setTimeout(() => {
+    if (newValue.trim()) {
+      validateData();
+    } else {
+      validationResults.value = [];
+    }
+  }, 300);
 });
 </script>
 

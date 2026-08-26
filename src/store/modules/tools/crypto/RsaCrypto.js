@@ -97,15 +97,31 @@ export const useRsaCryptoStore = defineStore('rsaCrypto', () => {
   };
 
   const parsePEM = (pem) => {
+    // 支持各种 PEM 标签：PUBLIC KEY / PRIVATE KEY / RSA PUBLIC KEY / RSA PRIVATE KEY / ENCRYPTED PRIVATE KEY 等
     const pemContents = pem
-      .replace(/-----BEGIN (PUBLIC|PRIVATE) KEY-----/, '')
-      .replace(/-----END (PUBLIC|PRIVATE) KEY-----/, '')
+      .replace(/-----BEGIN [^-]+-----/, '')
+      .replace(/-----END [^-]+-----/, '')
       .replace(/\s/g, '');
+    
+    if (!pemContents) {
+      throw new Error('PEM 内容为空');
+    }
+    if (!/^[A-Za-z0-9+/=]+$/.test(pemContents)) {
+      throw new Error('PEM 内容不是有效的 Base64');
+    }
     return pemContents;
+  };
+
+  // 检查 Web Crypto 是否可用（需要 HTTPS 或 localhost）
+  const ensureWebCryptoAvailable = () => {
+    if (typeof crypto === 'undefined' || !crypto.subtle) {
+      throw new Error('当前环境不支持 Web Crypto API（需要 HTTPS 或 localhost 环境）');
+    }
   };
 
   const importPublicKey = async (pem) => {
     try {
+      ensureWebCryptoAvailable();
       const base64 = parsePEM(pem);
       const binaryKey = base64ToArrayBuffer(base64);
       
@@ -122,12 +138,16 @@ export const useRsaCryptoStore = defineStore('rsaCrypto', () => {
         ['encrypt']
       );
     } catch (error) {
-      throw new Error('公钥格式无效: ' + error.message);
+      if (error.message.includes('Web Crypto')) {
+        throw error;
+      }
+      throw new Error(`公钥格式无效：请使用 SPKI 格式（-----BEGIN PUBLIC KEY-----），${error.message}`);
     }
   };
 
   const importPrivateKey = async (pem) => {
     try {
+      ensureWebCryptoAvailable();
       const base64 = parsePEM(pem);
       const binaryKey = base64ToArrayBuffer(base64);
       
@@ -144,7 +164,10 @@ export const useRsaCryptoStore = defineStore('rsaCrypto', () => {
         ['decrypt']
       );
     } catch (error) {
-      throw new Error('私钥格式无效: ' + error.message);
+      if (error.message.includes('Web Crypto')) {
+        throw error;
+      }
+      throw new Error(`私钥格式无效：请使用 PKCS#8 格式（-----BEGIN PRIVATE KEY-----），${error.message}`);
     }
   };
 

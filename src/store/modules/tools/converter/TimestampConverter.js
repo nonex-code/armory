@@ -24,11 +24,21 @@ export const useTimestampConverterStore = defineStore('timestampConverter', () =
     }
 
     try {
-      let timestamp = parseInt(timestampInput.value);
+      // 使用 Number 而非 parseInt，避免科学计数法（如 1.7e10）被截断
+      let timestamp = Number(timestampInput.value.trim());
+      
+      if (!Number.isFinite(timestamp)) {
+        throw new Error('无效的时间戳，请输入数字');
+      }
       
       // 根据单位转换
       if (timestampUnit.value === 'seconds') {
         timestamp *= 1000; // 转换为毫秒
+      }
+      
+      // Date 支持的范围约为 ±8.64e15 毫秒
+      if (Math.abs(timestamp) > 8.64e15) {
+        throw new Error('时间戳超出可表示的范围');
       }
       
       const date = new Date(timestamp);
@@ -57,11 +67,24 @@ export const useTimestampConverterStore = defineStore('timestampConverter', () =
     }
 
     try {
-      const date = new Date(datetimeInput.value);
+      const input = datetimeInput.value.trim();
+      const date = new Date(input);
       
       // 检查日期是否有效
       if (isNaN(date.getTime())) {
         throw new Error('无效的日期');
+      }
+      
+      // 拒绝回绕日期（如 2023/02/30 会被 JS 解释为 2023-03-02）
+      if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(input)) {
+        const parts = input.split(/[-/.]/);
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        const expectedDay = new Date(Date.UTC(year, month - 1, day)).getUTCDate();
+        if (expectedDay !== day) {
+          throw new Error('无效的日期：日/月超出范围');
+        }
       }
       
       timestampResult.value = {

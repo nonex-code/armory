@@ -166,10 +166,10 @@
                   <input
                     type="radio"
                     v-model="options.keywordCase"
-                    value="capitalize"
+                    value="preserve"
                     class="mr-2"
                   >
-                  <span class="text-sm text-gray-700 dark:text-gray-300">首字母大写 (Capitalize)</span>
+                  <span class="text-sm text-gray-700 dark:text-gray-300">保持原样 (Preserve)</span>
                 </label>
               </div>
             </div>
@@ -611,6 +611,8 @@ const loadExample = () => {
 };
 
 const useExample = () => {
+  // 同步方言，确保加载的示例与预览一致
+  store.updateDialect(selectedExampleDialect.value);
   store.loadExample();
   showExamplePanel.value = false;
   showSuccess('示例SQL已加载');

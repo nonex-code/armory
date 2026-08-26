@@ -273,6 +273,7 @@ const {
   hashResults,
   processing,
   errorMessage,
+  isFileLoading,
   hashAlgorithms,
   hasInput,
   hasResults,

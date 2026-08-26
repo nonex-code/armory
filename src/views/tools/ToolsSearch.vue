@@ -114,7 +114,7 @@ const {
 
 // 使用状态管理中的数据
 const searchQuery = ref(pageState.searchQuery || '');
-const searchResults = computed(() => pageState.searchResults || []);
+const searchResults = ref(pageState.searchResults || []);
 const loading = ref(pageState.loading || false);
 const error = ref(pageState.error || null);
 const hasSearched = ref(pageState.hasSearched || false);
@@ -186,7 +186,7 @@ onMounted(async () => {
     // 从路由参数获取搜索关键词
     if (route.query.q) {
       searchQuery.value = route.query.q;
-      await performSearch();
+      await search();
     }
     
     // 尝试恢复状态
@@ -194,7 +194,7 @@ onMounted(async () => {
     
     // 如果有搜索关键词但没有结果，则执行搜索
     if (searchQuery.value && searchResults.value.length === 0 && !hasSearched.value) {
-      await performSearch();
+      await search();
     }
   } catch (err) {
     console.error('初始化失败:', err);

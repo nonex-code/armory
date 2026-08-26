@@ -12,30 +12,48 @@ export const useUuidGeneratorStore = defineStore('uuidGenerator', () => {
   // 计算属性
   const hasGeneratedUuids = computed(() => generatedUuids.value.length > 0);
 
-  // 生成UUID v1
-  const generateUuidV1 = () => {
-    // 简化的v1 UUID生成（实际应用中应使用更精确的方法）
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 15);
-    
-    // 构建v1 UUID格式
-    const timeLow = (timestamp & 0xffffffff).toString(16).padStart(8, '0');
-    const timeMid = ((timestamp >> 32) & 0xffff).toString(16).padStart(4, '0');
-    const timeHiAndVersion = (((timestamp >> 48) & 0x0fff) | 0x1000).toString(16).padStart(4, '0');
-    const clockSeqAndReserved = (0x8000 | (Math.random() * 0x3fff)).toString(16).padStart(4, '0');
-    const node = random.substring(0, 12).padStart(12, '0');
-    
-    return `${timeLow}-${timeMid}-${timeHiAndVersion}-${clockSeqAndReserved}-${node}`;
+  // 获取加密安全随机字节（非安全上下文时降级）
+  const getRandomBytes = (length) => {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      return crypto.getRandomValues(new Uint8Array(length));
+    }
+    const bytes = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+    return bytes;
   };
 
-  // 生成UUID v4
+  const toHex = (value, length) => value.toString(16).padStart(length, '0');
+
+  // 生成UUID v1（RFC 4122：1582-10-15 起 100ns 间隔时间戳 + 时钟序列 + 节点）
+  const generateUuidV1 = () => {
+    // 1582-10-15 与 Unix 纪元(1970-01-01)之间的毫秒差
+    const GREGORIAN_OFFSET = 12219292800000n;
+    const timestamp100ns = (BigInt(Date.now()) + GREGORIAN_OFFSET) * 10000n;
+
+    const timeLow = Number(timestamp100ns & 0xffffffffn);
+    const timeMid = Number((timestamp100ns >> 32n) & 0xffffn);
+    const timeHiAndVersion = Number((timestamp100ns >> 48n) & 0x0fffn) | 0x1000;
+
+    const clockBytes = getRandomBytes(2);
+    const clockSeq = (((clockBytes[0] << 8) | clockBytes[1]) & 0x3fff) | 0x8000;
+
+    // 节点标识：6 字节随机数（设置组播位，避免与真实 MAC 冲突）
+    const nodeBytes = getRandomBytes(6);
+    nodeBytes[0] = (nodeBytes[0] | 0x01) & 0xfd;
+    const node = Array.from(nodeBytes).map(b => toHex(b, 2)).join('');
+
+    return `${toHex(timeLow, 8)}-${toHex(timeMid, 4)}-${toHex(timeHiAndVersion, 4)}-${toHex(clockSeq, 4)}-${node}`;
+  };
+
+  // 生成UUID v4（RFC 4122：完全随机，版本位/变体位）
   const generateUuidV4 = () => {
-    // 生成v4 UUID
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+    const bytes = getRandomBytes(16);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+    const hex = Array.from(bytes).map(b => toHex(b, 2)).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   };
 
   // 生成UUID
@@ -47,9 +65,12 @@ export const useUuidGeneratorStore = defineStore('uuidGenerator', () => {
       // 模拟生成延迟
       await new Promise(resolve => setTimeout(resolve, 300));
       
+      // 钳制生成数量，防止手输超大值
+      const count = Math.min(Math.max(parseInt(generateCount.value, 10) || 1, 1), 100);
+      
       // 生成UUID
       const newUuids = [];
-      for (let i = 0; i < generateCount.value; i++) {
+      for (let i = 0; i < count; i++) {
         let uuid;
         
         if (uuidVersion.value === 'v1') {

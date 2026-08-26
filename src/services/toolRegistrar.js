@@ -15,102 +15,51 @@ const toolRegistry = new Map();
  * @returns {Object|null} 工具配置
  */
 function extractToolConfig(component) {
-  console.log('开始提取工具配置...');
-  console.log('组件类型:', typeof component);
-  console.log('组件结构:', Object.keys(component));
-  
   // 尝试从组件的 __vccOpts 中获取配置
-  if (component.__vccOpts) {
-    console.log('组件 __vccOpts 结构:', Object.keys(component.__vccOpts));
-    if (component.__vccOpts.meta && component.__vccOpts.meta.tool) {
-      console.log('从 __vccOpts.meta.tool 找到配置');
-      return component.__vccOpts.meta.tool;
-    }
+  if (component.__vccOpts && component.__vccOpts.meta && component.__vccOpts.meta.tool) {
+    return component.__vccOpts.meta.tool;
   }
   
   // 尝试从组件的 options 中获取配置
-  if (component.options) {
-    console.log('组件 options 结构:', Object.keys(component.options));
-    if (component.options.meta && component.options.meta.tool) {
-      console.log('从 options.meta.tool 找到配置');
-      return component.options.meta.tool;
-    }
+  if (component.options && component.options.meta && component.options.meta.tool) {
+    return component.options.meta.tool;
   }
   
   // 尝试从组件本身获取配置
-  if (component.meta) {
-    console.log('组件 meta 结构:', Object.keys(component.meta));
-    if (component.meta.tool) {
-      console.log('从 meta.tool 找到配置');
-      return component.meta.tool;
-    }
+  if (component.meta && component.meta.tool) {
+    return component.meta.tool;
   }
   
   // 尝试从组件的 __hmrId 中获取配置（用于开发环境）
   if (component.__hmrId) {
-    console.log('尝试从HMR组件获取配置:', component.__hmrId);
-    // 尝试从组件的 __asyncResolved 中获取配置
     if (component.__asyncResolved && component.__asyncResolved.meta && component.__asyncResolved.meta.tool) {
-      console.log('从 __asyncResolved.meta.tool 找到配置');
       return component.__asyncResolved.meta.tool;
     }
-    // 尝试从组件的 __asyncResolved.__vccOpts 中获取配置
     if (component.__asyncResolved && component.__asyncResolved.__vccOpts && component.__asyncResolved.__vccOpts.meta && component.__asyncResolved.__vccOpts.meta.tool) {
-      console.log('从 __asyncResolved.__vccOpts.meta.tool 找到配置');
       return component.__asyncResolved.__vccOpts.meta.tool;
     }
   }
   
   // 尝试从组件的 setup 函数中获取配置
-  if (component.setup) {
-    console.log('组件有 setup 函数');
-    // 在Vue 3中，<script setup>的组件配置可能在setup函数中
-    try {
-      // 尝试获取组件的类型信息
-      if (component.__type) {
-        console.log('组件 __type 结构:', Object.keys(component.__type));
-        if (component.__type.__options && component.__type.__options.meta && component.__type.__options.meta.tool) {
-          console.log('从 __type.__options.meta.tool 找到配置');
-          return component.__type.__options.meta.tool;
-        }
-      }
-    } catch (error) {
-      console.error('获取组件类型信息失败:', error);
-    }
+  if (component.setup && component.__type && component.__type.__options && component.__type.__options.meta && component.__type.__options.meta.tool) {
+    return component.__type.__options.meta.tool;
   }
   
   // 尝试从组件的 __asyncResolved 中获取配置
   if (component.__asyncResolved) {
-    console.log('组件 __asyncResolved 结构:', Object.keys(component.__asyncResolved));
-    try {
-      if (component.__asyncResolved.__vccOpts && component.__asyncResolved.__vccOpts.meta && component.__asyncResolved.__vccOpts.meta.tool) {
-        console.log('从 __asyncResolved.__vccOpts.meta.tool 找到配置');
-        return component.__asyncResolved.__vccOpts.meta.tool;
-      }
-      if (component.__asyncResolved.meta && component.__asyncResolved.meta.tool) {
-        console.log('从 __asyncResolved.meta.tool 找到配置');
-        return component.__asyncResolved.meta.tool;
-      }
-    } catch (error) {
-      console.error('获取异步解析配置失败:', error);
+    if (component.__asyncResolved.__vccOpts && component.__asyncResolved.__vccOpts.meta && component.__asyncResolved.__vccOpts.meta.tool) {
+      return component.__asyncResolved.__vccOpts.meta.tool;
+    }
+    if (component.__asyncResolved.meta && component.__asyncResolved.meta.tool) {
+      return component.__asyncResolved.meta.tool;
     }
   }
   
   // 尝试从组件的 render 函数中获取配置
-  if (component.render) {
-    console.log('组件有 render 函数');
-    try {
-      // 检查render函数的属性
-      if (component.render.__vccOpts && component.render.__vccOpts.meta && component.render.__vccOpts.meta.tool) {
-        console.log('从 render.__vccOpts.meta.tool 找到配置');
-        return component.render.__vccOpts.meta.tool;
-      }
-    } catch (error) {
-      console.error('获取render函数配置失败:', error);
-    }
+  if (component.render && component.render.__vccOpts && component.render.__vccOpts.meta && component.render.__vccOpts.meta.tool) {
+    return component.render.__vccOpts.meta.tool;
   }
   
-  console.log('未找到工具配置');
   return null;
 }
 
@@ -147,12 +96,10 @@ function validateToolConfig(config, categories) {
  * @returns {string} 工具路径
  */
 function generateToolPath(filePath) {
-  const path = filePath
+  return filePath
     .replace(/^.*src\/views\/tools\//, '/tools/')
     .replace(/\.vue$/, '')
     .replace(/\/index$/, '');
-  console.log(`从文件路径 ${filePath} 生成工具路径: ${path}`);
-  return path;
 }
 
 /**
@@ -196,7 +143,7 @@ class ToolRegistrar {
   register(toolConfig, component, path) {
     // 检查工具是否已经注册，防止重复注册
     if (toolRegistry.has(toolConfig.id)) {
-      console.log(`工具 ${toolConfig.id} 已存在，跳过重复注册`);
+      console.warn(`工具 ${toolConfig.id} 已存在，跳过重复注册`);
       return false;
     }
 
@@ -221,7 +168,6 @@ class ToolRegistrar {
     toolRegistry.set(toolConfig.id, tool);
     this.tools.push(tool);
 
-    console.log(`工具已注册: ${toolConfig.name} (${toolConfig.id})`);
     return true;
   }
 
@@ -404,20 +350,16 @@ class ToolRegistrar {
   async init() {
     // 加强初始化状态检查，防止重复初始化
     if (this.initialized) {
-      console.log('工具注册器已经初始化，跳过重复初始化');
       return;
     }
 
     try {
-      console.log('开始初始化工具注册器...');
-      
       // 清空现有工具列表，确保不会重复添加
       this.tools = [];
       toolRegistry.clear();
       
       // 使用eager模式动态导入所有工具组件
       const toolModules = import.meta.glob('@/views/tools/**/*.vue', { eager: true });
-      console.log('发现工具模块:', Object.keys(toolModules).length);
       
       // 遍历所有工具组件
       for (const path in toolModules) {
@@ -433,18 +375,13 @@ class ToolRegistrar {
           const toolConfig = extractToolConfig(component);
           
           // 如果找到工具配置，则注册工具
-          if (toolConfig) {
-            // 验证工具配置
-            if (validateToolConfig(toolConfig, toolCategories)) {
-              // 创建工具对象
-              const tool = createTool(toolConfig, component, toolPath);
-              
-              // 添加到注册表
-              toolRegistry.set(toolConfig.id, tool);
-              this.tools.push(tool);
-              
-              console.log(`工具已注册: ${toolConfig.name} (${toolConfig.id})`);
-            }
+          if (toolConfig && validateToolConfig(toolConfig, toolCategories)) {
+            // 创建工具对象
+            const tool = createTool(toolConfig, component, toolPath);
+            
+            // 添加到注册表
+            toolRegistry.set(toolConfig.id, tool);
+            this.tools.push(tool);
           }
         } catch (error) {
           console.error(`加载工具组件失败: ${path}`, error);
@@ -456,7 +393,6 @@ class ToolRegistrar {
       
       this.initialized = true;
       console.log(`工具注册器初始化完成，共注册 ${this.tools.length} 个工具`);
-      console.log('已注册的工具:', this.tools.map(t => t.id));
     } catch (error) {
       console.error('工具注册器初始化失败:', error);
     }

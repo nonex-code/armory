@@ -142,11 +142,11 @@
           <h2 class="card-title">透明度调节</h2>
           <div class="space-y-4">
             <div class="flex items-center justify-between">
-              <span class="font-medium">透明度: {{ Math.round(opacity * 100) }}%</span>
-              <span class="text-sm text-base-content/70">{{ opacity.toFixed(2) }}</span>
+              <span class="font-medium">透明度: {{ Math.round(Number(opacity) * 100) }}%</span>
+              <span class="text-sm text-base-content/70">{{ Number(opacity).toFixed(2) }}</span>
             </div>
             <input
-              v-model="opacity"
+              v-model.number="opacity"
               type="range"
               min="0"
               max="1"

@@ -327,7 +327,6 @@ const {
   autoConvert,
   activeTabName,
   inputPlaceholder,
-  hasInput,
   hasOutput,
   canProcess,
   showOptions,
@@ -382,9 +381,13 @@ const handleCopyOutput = async () => {
 };
 
 const handleDownloadOutput = () => {
-  store.downloadOutput();
-  showSuccess('已下载结果文件');
-  toolService.recordToolUsage('encoding-converter', 'download');
+  const ok = store.downloadOutput();
+  if (ok) {
+    showSuccess('已下载结果文件');
+    toolService.recordToolUsage('encoding-converter', 'download');
+  } else {
+    showError('下载失败');
+  }
 };
 
 const handleSwapInputOutput = () => {

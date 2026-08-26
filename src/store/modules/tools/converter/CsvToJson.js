@@ -31,19 +31,16 @@ export const useCsvToJsonStore = defineStore('csvToJson', () => {
         return;
       }
       
-      // 解析CSV
-      const lines = inputCsv.value.split('\n').filter(line => line.trim());
-      
-      if (lines.length === 0) {
-        errorMessage.value = 'CSV数据为空';
-        return;
-      }
-      
       // 处理分隔符
       const actualDelimiter = delimiter.value === '\\t' ? '\t' : delimiter.value;
       
-      // 解析所有行
-      const parsedLines = lines.map(line => parseCsvLine(line, actualDelimiter));
+      // 解析完整 CSV（RFC 4180：支持引号字段内的换行、转义引号、CRLF、BOM）
+      const parsedLines = parseCsv(inputCsv.value, actualDelimiter);
+      
+      if (parsedLines.length === 0) {
+        errorMessage.value = 'CSV数据为空';
+        return;
+      }
       
       // 检查所有行的字段数量是否一致
       const fieldCounts = parsedLines.map(line => line.length);
@@ -59,7 +56,7 @@ export const useCsvToJsonStore = defineStore('csvToJson', () => {
       // 转换为JSON
       let result;
       
-      if (hasHeader.value && lines.length > 1) {
+      if (hasHeader.value && parsedLines.length > 1) {
         // 使用第一行作为标题
         const headers = parsedLines[0];
         const dataRows = parsedLines.slice(1);
@@ -97,7 +94,89 @@ export const useCsvToJsonStore = defineStore('csvToJson', () => {
     }
   };
 
-  // 解析CSV行
+  // 解析完整 CSV 文本（RFC 4180）
+  const parseCsv = (text, delimiter) => {
+    // 去除 UTF-8 BOM
+    let csvText = text;
+    if (csvText.charCodeAt(0) === 0xFEFF) {
+      csvText = csvText.slice(1);
+    }
+    
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+    let i = 0;
+    
+    while (i < csvText.length) {
+      const char = csvText[i];
+      
+      if (inQuotes) {
+        if (char === '"') {
+          if (csvText[i + 1] === '"') {
+            // 转义的引号（""）
+            field += '"';
+            i += 2;
+            continue;
+          }
+          inQuotes = false;
+          i++;
+          continue;
+        }
+        // 引号内内容（包括换行、分隔符）原样保留
+        field += char;
+        i++;
+        continue;
+      }
+      
+      if (char === '"') {
+        inQuotes = true;
+        i++;
+        continue;
+      }
+      
+      if (char === delimiter) {
+        row.push(field);
+        field = '';
+        i++;
+        continue;
+      }
+      
+      if (char === '\r') {
+        // CRLF 或 单独 CR 均视为行结束
+        if (csvText[i + 1] === '\n') i++;
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+        i++;
+        continue;
+      }
+      
+      if (char === '\n') {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+        i++;
+        continue;
+      }
+      
+      field += char;
+      i++;
+    }
+    
+    // 最后一行（无结尾换行）
+    if (field !== '' || row.length > 0) {
+      row.push(field);
+      rows.push(row);
+    }
+    
+    // 过滤完全空白的行
+    return rows.filter(r => r.length > 1 || (r.length === 1 && r[0].trim() !== ''));
+  };
+
+  // 解析CSV行（保留给外部调用；新解析器已支持多行字段）
   const parseCsvLine = (line, delimiter) => {
     const result = [];
     let current = '';
@@ -130,18 +209,13 @@ export const useCsvToJsonStore = defineStore('csvToJson', () => {
     return result;
   };
 
-  // 解析值的类型
+  // 解析值的类型（避免前导零、大数精度、Infinity 误转换）
   const parseValue = (value) => {
     if (value === '') {
       return null;
     }
     
-    // 尝试解析为数字
-    if (!isNaN(value) && !isNaN(parseFloat(value))) {
-      return parseFloat(value);
-    }
-    
-    // 尝试解析为布尔值
+    // 布尔值
     if (value.toLowerCase() === 'true') {
       return true;
     }
@@ -149,7 +223,22 @@ export const useCsvToJsonStore = defineStore('csvToJson', () => {
       return false;
     }
     
-    // 返回字符串
+    // 整数（仅标准十进制形态；拒绝前导零（"007"）与超长数字，保持字符串避免精度丢失）
+    if (/^-?(0|[1-9]\d*)$/.test(value)) {
+      const digits = value.replace(/^-/, '');
+      // 超过 15 位的大数保留为字符串，避免精度丢失
+      if (digits.length > 15) {
+        return value;
+      }
+      return parseInt(value, 10);
+    }
+    
+    // 小数（标准形态，拒绝前导零如 "007.5"）
+    if (/^-?(0|[1-9]\d*)\.\d+$/.test(value)) {
+      return parseFloat(value);
+    }
+    
+    // 其他（含 Infinity、科学计数法等）保持字符串
     return value;
   };
 
@@ -244,6 +333,7 @@ export const useCsvToJsonStore = defineStore('csvToJson', () => {
     
     // 方法
     convertToJson,
+    parseCsv,
     parseCsvLine,
     parseValue,
     handleFileUpload,

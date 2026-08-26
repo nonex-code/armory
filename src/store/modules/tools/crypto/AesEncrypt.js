@@ -15,7 +15,11 @@ export const useAesEncryptStore = defineStore('aesEncrypt', () => {
   const mode = ref('CBC');
   const padding = ref('Pkcs7');
   const outputFormat = ref('base64');
-  
+
+  // crypto-js 不支持 GCM（CryptoJS.mode.GCM 不存在），若外部传入 GCM 则回退 CBC，避免静默降级
+  if (mode.value === 'GCM') {
+    mode.value = 'CBC';
+  }
   const showAdvancedOptions = ref(false);
   const keyFormat = ref('utf8');
   const ivValue = ref('');
@@ -30,7 +34,7 @@ export const useAesEncryptStore = defineStore('aesEncrypt', () => {
   const hasKey = computed(() => !!secretKey.value.trim());
   const canProcess = computed(() => hasInput.value && hasKey.value && !keyError.value);
   const needsIv = computed(() => {
-    return ['CBC', 'CFB', 'OFB', 'CTR', 'GCM'].includes(mode.value);
+    return ['CBC', 'CFB', 'OFB', 'CTR'].includes(mode.value);
   });
   const hasIv = computed(() => !!ivValue.value.trim());
   
@@ -144,10 +148,13 @@ export const useAesEncryptStore = defineStore('aesEncrypt', () => {
       'ECB': CryptoJS.mode.ECB,
       'CFB': CryptoJS.mode.CFB,
       'OFB': CryptoJS.mode.OFB,
-      'CTR': CryptoJS.mode.CTR,
-      'GCM': CryptoJS.mode.GCM
+      'CTR': CryptoJS.mode.CTR
     };
-    return modes[mode.value] || CryptoJS.mode.CBC;
+    const cryptoMode = modes[mode.value];
+    if (!cryptoMode) {
+      throw new Error(`不支持的加密模式: ${mode.value}`);
+    }
+    return cryptoMode;
   };
   
   const getCryptoPadding = () => {

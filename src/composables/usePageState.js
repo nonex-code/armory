@@ -1,80 +1,66 @@
-import { ref, computed } from 'vue';
+import { reactive } from 'vue';
 
-// 页面状态管理
-export const usePageState = () => {
-  // 页面加载状态
-  const isLoading = ref(false);
-  
-  // 页面错误状态
-  const error = ref(null);
-  
-  // 页面数据
-  const data = ref(null);
-  
-  // 计算属性
-  const hasError = computed(() => error.value !== null);
-  const hasData = computed(() => data.value !== null);
-  
-  // 设置加载状态
-  const setLoading = (loading) => {
-    isLoading.value = loading;
-  };
-  
-  // 设置错误
-  const setError = (errorMessage) => {
-    error.value = errorMessage;
-    isLoading.value = false;
-  };
-  
-  // 清除错误
-  const clearError = () => {
-    error.value = null;
-  };
-  
-  // 设置数据
-  const setData = (newData) => {
-    data.value = newData;
-    isLoading.value = false;
-    error.value = null;
-  };
-  
-  // 重置状态
-  const reset = () => {
-    isLoading.value = false;
-    error.value = null;
-    data.value = null;
-  };
-  
-  // 执行异步操作
-  const executeAsync = async (asyncFn) => {
+/**
+ * 页面状态管理（带 localStorage 持久化）
+ *
+ * 用法：
+ *   const { state, saveState, restoreState, resetState } = usePageState('key', {
+ *     searchQuery: '',
+ *     results: []
+ *   });
+ *
+ * @param {string} key 状态标识，用于 localStorage 持久化键名
+ * @param {Object} initialState 初始状态（会被浅拷贝为响应式对象）
+ * @returns {{ state: Object, saveState: Function, restoreState: Function, resetState: Function }}
+ */
+export const usePageState = (key, initialState = {}) => {
+  const storageKey = `pageState_${key}`;
+  const state = reactive({ ...initialState });
+
+  // 从 localStorage 恢复状态
+  const restoreState = () => {
     try {
-      setLoading(true);
-      clearError();
-      const result = await asyncFn();
-      setData(result);
-      return result;
-    } catch (err) {
-      setError(err.message || '操作失败');
-      throw err;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          Object.assign(state, parsed);
+        }
+      }
+    } catch (error) {
+      console.warn(`恢复页面状态失败(${key}):`, error);
+      // 清除无效的状态数据
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) { /* ignore */ }
+    }
+    return state;
+  };
+
+  // 保存状态到 localStorage
+  const saveState = () => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn(`保存页面状态失败(${key}):`, error);
     }
   };
-  
+
+  // 重置状态为初始值
+  const resetState = () => {
+    Object.keys(state).forEach(k => delete state[k]);
+    Object.assign(state, { ...initialState });
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (error) {
+      console.warn(`清除页面状态失败(${key}):`, error);
+    }
+  };
+
   return {
-    // 状态
-    isLoading,
-    error,
-    data,
-    
-    // 计算属性
-    hasError,
-    hasData,
-    
-    // 方法
-    setLoading,
-    setError,
-    clearError,
-    setData,
-    reset,
-    executeAsync
+    state,
+    saveState,
+    restoreState,
+    resetState
   };
 };

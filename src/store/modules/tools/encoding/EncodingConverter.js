@@ -75,7 +75,17 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
         str += '=';
       }
     }
-    return decodeURIComponent(escape(atob(str)));
+    try {
+      const decoded = atob(str);
+      try {
+        return decodeURIComponent(escape(decoded));
+      } catch (e) {
+        throw new Error('解码结果不是有效的 UTF-8 文本（可能为二进制数据，文本解码仅支持 UTF-8）');
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('UTF-8')) throw e;
+      throw new Error('输入包含无效的 Base64 字符');
+    }
   };
   
   const base32Encode = (text) => {
@@ -93,9 +103,11 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
       result += base32Chars[index];
     }
     
-    const padding = (8 - (bits.length % 40)) % 8;
+    // 按 RFC 4648 计算 padding：每 8 个字符一组，不足补 '='
+    const charCount = Math.ceil(bits.length / 5);
+    const padding = (8 - (charCount % 8)) % 8;
     if (padding > 0) {
-      result = result.slice(0, -padding) + '='.repeat(padding);
+      result += '='.repeat(padding);
     }
     
     return result;
@@ -126,18 +138,15 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   
   const urlEncode = (text) => {
     if (urlOptions.value.encodeAll) {
-      return Array.from(text)
-        .map(char => {
-          const code = char.charCodeAt(0);
-          return '%' + code.toString(16).toUpperCase().padStart(2, '0');
-        })
+      // 按 UTF-8 字节做百分号编码，保证非 ASCII 字符（中文/emoji）与标准解码器互操作
+      const bytes = new TextEncoder().encode(text);
+      return Array.from(bytes)
+        .map(byte => '%' + byte.toString(16).toUpperCase().padStart(2, '0'))
         .join('');
     }
     
     let result = encodeURIComponent(text);
-    if (urlOptions.value.encodeSpace) {
-      result = result.replace(/%20/g, '%20');
-    } else {
+    if (!urlOptions.value.encodeSpace) {
       result = result.replace(/%20/g, '+');
     }
     return result;
@@ -151,13 +160,15 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   const htmlEncode = (text) => {
     const div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML;
+    // 补充转义单引号，防止用于单引号包裹的属性时破坏边界
+    return div.innerHTML.replace(/'/g, '&#39;');
   };
   
   const htmlDecode = (text) => {
-    const div = document.createElement('div');
-    div.innerHTML = text;
-    return div.textContent || div.innerText || '';
+    // 使用 textarea 按 raw text 解析：只解码实体，不创建任何元素，避免 XSS
+    const ta = document.createElement('textarea');
+    ta.innerHTML = text;
+    return ta.value;
   };
   
   const hexEncode = (text) => {
@@ -176,7 +187,8 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   };
   
   const hexDecode = (text) => {
-    const hexStr = text.replace(/[\s:]/g, '');
+    // 兼容 0x/0X 前缀（如 "0x41 0x42"）
+    const hexStr = text.replace(/[\s:]/g, '').replace(/0[xX]/g, '');
     if (!/^[0-9a-fA-F]*$/.test(hexStr)) {
       throw new Error('无效的十六进制字符');
     }
@@ -206,6 +218,10 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
           case 'html':
             return `&#${code};`;
           case 'hex':
+            // 大于 0xFF 的码点不能用 \xXX 表示（会破坏往返解码），改用 \uXXXX
+            if (code > 0xFF) {
+              return `\\u${code.toString(16).toUpperCase().padStart(4, '0')}`;
+            }
             return `\\x${code.toString(16).toUpperCase().padStart(2, '0')}`;
           case 'codepoint':
             return `U+${code.toString(16).toUpperCase().padStart(4, '0')}`;
@@ -241,6 +257,7 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   const processText = async () => {
     if (!inputText.value || !inputText.value.trim()) {
       outputText.value = '';
+      errorMessage.value = '';
       return;
     }
     
@@ -312,17 +329,24 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   };
   
   const downloadOutput = () => {
-    if (!outputText.value) return;
+    if (!outputText.value) return false;
     
-    const blob = new Blob([outputText.value], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeTab.value}_${isEncodeMode.value ? 'encoded' : 'decoded'}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const blob = new Blob([outputText.value], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeTab.value}_${isEncodeMode.value ? 'encoded' : 'decoded'}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // 延迟回收，避免下载尚未开始时 URL 已被释放
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return true;
+    } catch (error) {
+      console.error('下载失败:', error);
+      return false;
+    }
   };
   
   const switchTab = (tabId) => {
@@ -343,12 +367,24 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
     }
   };
   
+  // 防抖定时器：避免大文本/高频输入时同步转换卡死 UI
+  let debounceTimer = null;
+  // 交换输入输出时抑制 watch 触发的一次多余转换
+  let suppressNextWatch = false;
+
+  const scheduleAutoConvert = () => {
+    if (!autoConvert.value || !inputText.value.trim()) return;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => processText(), 200);
+  };
+
   const swapInputOutput = () => {
     if (!outputText.value) return;
     const temp = inputText.value;
+    suppressNextWatch = true;
+    isEncodeMode.value = !isEncodeMode.value;
     inputText.value = outputText.value;
     outputText.value = temp;
-    isEncodeMode.value = !isEncodeMode.value;
     errorMessage.value = '';
     if (autoConvert.value && inputText.value.trim()) {
       processText();
@@ -363,15 +399,15 @@ export const useEncodingConverterStore = defineStore('encodingConverter', () => 
   };
   
   watch([urlOptions, hexOptions, unicodeOptions, base64Options], () => {
-    if (autoConvert.value && inputText.value.trim()) {
-      processText();
-    }
+    scheduleAutoConvert();
   }, { deep: true });
   
   watch(inputText, () => {
-    if (autoConvert.value && inputText.value.trim()) {
-      processText();
+    if (suppressNextWatch) {
+      suppressNextWatch = false;
+      return;
     }
+    scheduleAutoConvert();
   });
   
   return {

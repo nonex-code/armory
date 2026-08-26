@@ -316,6 +316,83 @@ const outputStats = computed(() => {
   return { lines, chars }
 })
 
+// ============ CSS 安全处理工具 ============
+// 保护注释/字符串/url() 内容，防止被格式化或压缩操作破坏
+
+// 提取并保护 CSS 中不应被修改的内容
+const protectCssContent = (css) => {
+  const protectedParts = []; // { text, type }
+  let result = '';
+  let i = 0;
+  
+  const placeholder = () => `\u0000${protectedParts.length}\u0000`;
+  
+  while (i < css.length) {
+    const ch = css[i];
+    
+    // 注释 /* ... */
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      const endIndex = end === -1 ? css.length : end + 2;
+      protectedParts.push({ text: css.slice(i, endIndex), type: 'comment' });
+      result += placeholder();
+      i = endIndex;
+      continue;
+    }
+    
+    // 字符串 "..." 或 '...'（含转义）
+    if (ch === '"' || ch === "'") {
+      let j = i + 1;
+      while (j < css.length) {
+        if (css[j] === '\\') { j += 2; continue; }
+        if (css[j] === ch) { j++; break; }
+        j++;
+      }
+      protectedParts.push({ text: css.slice(i, j), type: 'string' });
+      result += placeholder();
+      i = j;
+      continue;
+    }
+    
+    // url(...)（可能含引号与转义）
+    if (/url\(/i.test(css.slice(i, i + 4))) {
+      let j = i + 4;
+      let depth = 1;
+      while (j < css.length && depth > 0) {
+        if (css[j] === '\\') { j += 2; continue; }
+        if (css[j] === '(') depth++;
+        else if (css[j] === ')') depth--;
+        j++;
+      }
+      protectedParts.push({ text: css.slice(i, j), type: 'url' });
+      result += placeholder();
+      i = j;
+      continue;
+    }
+    
+    result += ch;
+    i++;
+  }
+  
+  return { protectedCss: result, protectedParts };
+};
+
+// 还原占位符
+const restoreCssContent = (css, protectedParts) => {
+  return css.replace(/\u0000(\d+)\u0000/g, (_, index) => {
+    const part = protectedParts[parseInt(index, 10)];
+    return part ? part.text : '';
+  });
+};
+
+// 移除注释（作用于保护列表，返回新的占位符串）
+const stripComments = (protectedCss, protectedParts) => {
+  return protectedCss.replace(/\u0000(\d+)\u0000/g, (match, index) => {
+    const part = protectedParts[parseInt(index, 10)];
+    return part && part.type === 'comment' ? '' : match;
+  });
+};
+
 // CSS美化函数
 const beautifyCss = () => {
   if (!cssInput.value) return
@@ -323,83 +400,102 @@ const beautifyCss = () => {
   try {
     let css = cssInput.value
     
-    // 移除多余的空格和换行
-    css = css.replace(/\s+/g, ' ').trim()
+    // 保护注释/字符串/url 内容
+    const { protectedCss, protectedParts } = protectCssContent(css)
+    let work = protectedCss
     
-    // 处理注释
+    // 移除注释（如需）
     if (formatOptions.removeComments) {
-      css = css.replace(/\/\*[\s\S]*?\*\//g, '')
+      work = stripComments(work, protectedParts)
     }
     
-    // 添加换行和缩进
+    // 归一化空白（占位符不受影响）
+    work = work.replace(/\s+/g, ' ').trim()
+    
+    const indent = formatOptions.indentWithSpaces 
+      ? ' '.repeat(Math.max(parseInt(formatOptions.indentSize) || 2, 1))
+      : '\t'
+    const maxLineLength = parseInt(formatOptions.maxLineLength) || 0
+    
     let result = ''
     let indentLevel = 0
     let inRule = false
-    let inMedia = false
+    let ruleProps = [] // 当前规则内的属性（prop, value, raw）
     
-    const indent = formatOptions.indentWithSpaces 
-      ? ' '.repeat(parseInt(formatOptions.indentSize))
-      : '\t'
+    const indentStr = () => indent.repeat(indentLevel)
     
-    // 简单的CSS解析和格式化
-    const tokens = css.split(/([{}\/;])/)
+    // 按结构字符分词（/ 不再作为分隔符，避免破坏 font: 12px/1.5 等）
+    const tokens = work.split(/([{};])/)
+    
+    // 输出属性行（可选排序、超长折行）
+    const flushRuleProps = () => {
+      let props = ruleProps
+      if (formatOptions.sortProperties) {
+        props = [...props].sort((a, b) => a.prop.localeCompare(b.prop))
+      }
+      props.forEach(({ raw }) => {
+        let line = raw
+        if (maxLineLength > 0 && line.length > maxLineLength) {
+          // 在逗号后折行（选择器列表/多值），续行追加缩进
+          line = line.replace(/,\s*/g, `,\n${indentStr()}    `)
+        }
+        result += indentStr() + line + ';\n'
+      })
+      ruleProps = []
+    }
     
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i].trim()
-      
       if (!token) continue
       
       if (token === '{') {
-        result += ' {\n'
+        // 前面已输出选择器/@规则，这里补上花括号
+        result = result.replace(/\s*$/, '') + ' {\n'
         indentLevel++
         inRule = true
       } else if (token === '}') {
-        indentLevel--
-        result += '\n' + indent.repeat(indentLevel) + '}'
+        if (inRule) {
+          flushRuleProps()
+        }
+        indentLevel = Math.max(0, indentLevel - 1)
+        result = result.replace(/\s*$/, '')
+        result += '\n' + indentStr() + '}'
         if (formatOptions.newlineBetweenRules) {
           result += '\n\n'
         }
         inRule = false
-        inMedia = false
       } else if (token === ';') {
         if (inRule) {
-          result += ';\n' + indent.repeat(indentLevel)
+          // 规则内分号由 flushRuleProps 处理，这里忽略空分号
         }
-      } else if (token.startsWith('@')) {
-        // 处理@规则
-        if (token.startsWith('@media')) {
-          inMedia = true
-        }
-        result += '\n' + indent.repeat(indentLevel) + token
-      } else {
-        if (inRule) {
-          // 处理属性
-          const propertyParts = token.split(':')
-          if (propertyParts.length === 2) {
-            const [prop, value] = propertyParts
-            
-            // 属性排序（如果启用）
-            if (formatOptions.sortProperties) {
-              // 简单的字母排序
-              // 实际实现需要更复杂的排序逻辑
-            }
-            
-            result += indent.repeat(indentLevel) + prop.trim() + ': ' + value.trim()
-          } else {
-            result += indent.repeat(indentLevel) + token
+      } else if (inRule) {
+        // 属性（可能含多个冒号，如 filter: progid:...）
+        const colonIndex = token.indexOf(':')
+        if (colonIndex > 0) {
+          const prop = token.slice(0, colonIndex).trim()
+          const value = token.slice(colonIndex + 1).trim()
+          if (prop) {
+            ruleProps.push({ prop: prop.toLowerCase(), raw: `${prop}: ${value}` })
+            continue
           }
-        } else {
-          // 处理选择器
-          result += '\n' + indent.repeat(indentLevel) + token
         }
+        ruleProps.push({ prop: '', raw: token })
+      } else {
+        // 选择器或@规则
+        result += '\n' + indentStr() + token
       }
     }
     
-    cssOutput.value = result.trim()
+    // 收尾：处理未闭合的规则
+    if (inRule) {
+      flushRuleProps()
+    }
+    
+    cssOutput.value = restoreCssContent(result.trim(), protectedParts)
     outputMode.value = '美化'
     
   } catch (error) {
-    cssOutput.value = '美化失败：' + error.message
+    cssOutput.value = '美化失败：' + (error?.message || error)
     outputMode.value = ''
   }
 }
@@ -411,27 +507,31 @@ const minifyCss = () => {
   try {
     let css = cssInput.value
     
+    // 保护注释/字符串/url 内容
+    const { protectedCss, protectedParts } = protectCssContent(css)
+    
     // 移除注释
-    css = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    let work = stripComments(protectedCss, protectedParts)
     
-    // 移除多余的空格和换行
-    css = css.replace(/\s+/g, ' ')
+    // 归一化空白（占位符不受影响，字符串内容不被改写）
+    work = work.replace(/\s+/g, ' ')
     
-    // 移除选择器和属性值周围的多余空格
-    css = css.replace(/\s*{\s*/g, '{')
-    css = css.replace(/\s*}\s*/g, '}')
-    css = css.replace(/\s*;\s*/g, ';')
-    css = css.replace(/\s*,\s*/g, ',')
-    css = css.replace(/\s*:\s*/g, ':')
+    // 结构性空白压缩（字符串/url 已受保护）
+    work = work.replace(/\s*{\s*/g, '{')
+    work = work.replace(/\s*}\s*/g, '}')
+    work = work.replace(/\s*;\s*/g, ';')
+    work = work.replace(/\s*,\s*/g, ',')
+    work = work.replace(/\s*:\s*/g, ':')
+    work = work.replace(/\s*>\s*/g, '>')
     
     // 移除最后一个分号
-    css = css.replace(/;}/g, '}')
+    work = work.replace(/;}/g, '}')
     
-    cssOutput.value = css.trim()
+    cssOutput.value = restoreCssContent(work.trim(), protectedParts)
     outputMode.value = '压缩'
     
   } catch (error) {
-    cssOutput.value = '压缩失败：' + error.message
+    cssOutput.value = '压缩失败：' + (error?.message || error)
     outputMode.value = ''
   }
 }

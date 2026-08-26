@@ -37,6 +37,35 @@ export const usePasswordGeneratorStore = defineStore('passwordGenerator', () => 
     return charset;
   };
 
+  // 各字符类对应的字符集（用于保证每个已选类别至少出现一次）
+  const getCharClassSets = () => {
+    const sets = [];
+    if (options.value.uppercase) sets.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    if (options.value.lowercase) sets.push('abcdefghijklmnopqrstuvwxyz');
+    if (options.value.numbers) sets.push('0123456789');
+    if (options.value.symbols) sets.push('!@#$%^&*()_+-=[]{}|;:,.<>?');
+    return sets;
+  };
+
+  // 加密安全随机整数 [0, max)
+  const secureRandomInt = (max) => {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      return buf[0] % max;
+    }
+    return Math.floor(Math.random() * max);
+  };
+
+  // Fisher-Yates 洗牌（使用加密随机）
+  const shuffle = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = secureRandomInt(i + 1);
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
   // 生成密码
   const generatePasswords = async () => {
     if (!hasSelectedOptions.value) {
@@ -45,20 +74,33 @@ export const usePasswordGeneratorStore = defineStore('passwordGenerator', () => 
 
     isGenerating.value = true;
     generatedPasswords.value = [];
+    passwordStrength.value = null;
 
     try {
       // 模拟生成延迟
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const charset = getCharset();
+      const charClassSets = getCharClassSets();
+      const length = Math.min(Math.max(parseInt(passwordLength.value, 10) || 8, 4), 64);
+      const count = Math.min(Math.max(parseInt(generateCount.value, 10) || 1, 1), 20);
       const passwords = [];
       
-      for (let i = 0; i < generateCount.value; i++) {
-        let password = '';
-        for (let j = 0; j < passwordLength.value; j++) {
-          password += charset.charAt(Math.floor(Math.random() * charset.length));
+      for (let i = 0; i < count; i++) {
+        const chars = [];
+        
+        // 每个已选字符类至少出现一次
+        charClassSets.forEach(set => {
+          chars.push(set.charAt(secureRandomInt(set.length)));
+        });
+        
+        // 剩余位随机填充
+        while (chars.length < length) {
+          chars.push(charset.charAt(secureRandomInt(charset.length)));
         }
-        passwords.push(password);
+        
+        // 洗牌打乱顺序
+        passwords.push(shuffle(chars).join(''));
       }
       
       generatedPasswords.value = passwords;
@@ -144,12 +186,11 @@ export const usePasswordGeneratorStore = defineStore('passwordGenerator', () => 
       feedback += ' 建议包含更多类型的字符。';
     }
     
-    // 设置强度文本
+    // 强度文本（score 最大 6，封顶为 5 档）
     let strengthText = '很弱';
     if (score >= 2 && score < 4) strengthText = '弱';
-    else if (score >= 4 && score < 6) strengthText = '一般';
-    else if (score >= 6 && score < 8) strengthText = '强';
-    else if (score >= 8) strengthText = '很强';
+    else if (score >= 4 && score < 5) strengthText = '一般';
+    else if (score >= 5) strengthText = '强';
     
     passwordStrength.value = {
       score: Math.min(score, 5),

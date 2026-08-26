@@ -8,12 +8,12 @@ export const useColorPickerStore = defineStore('colorPicker', () => {
   const recentColors = ref([]);
 
   // 预设颜色
-  const presetColors = [
+  const presetColors = ref([
     '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
     '#800000', '#008000', '#000080', '#808000', '#800080', '#008080', '#C0C0C0', '#808080',
     '#9999FF', '#993366', '#FFFFCC', '#CCFFFF', '#660066', '#FF8080', '#0066CC', '#CCCCFF',
     '#F0F8FF', '#FAEBD7', '#F0FFFF', '#F5F5DC', '#FFE4C4', '#FFEBCD', '#00008B', '#8B4513'
-  ];
+  ]);
 
   // 计算属性
   const hasRecentColors = computed(() => recentColors.value.length > 0);
@@ -43,9 +43,16 @@ export const useColorPickerStore = defineStore('colorPicker', () => {
     };
   });
 
-  // HEX转RGB
+  // HEX转RGB（支持 3 位短格式 #RGB）
   const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    let value = String(hex || '').trim();
+    if (value.startsWith('#')) {
+      value = value.slice(1);
+    }
+    if (/^[a-f\d]{3}$/i.test(value)) {
+      value = value.split('').map(char => char + char).join('');
+    }
+    const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(value);
     return result ? {
       r: parseInt(result[1], 16),
       g: parseInt(result[2], 16),
@@ -107,6 +114,10 @@ export const useColorPickerStore = defineStore('colorPicker', () => {
   // 获取饱和度渐变
   const getSaturationGradient = () => {
     const rgb = hexToRgb(selectedColor.value);
+    if (!rgb) {
+      // 非法颜色输入时回退到黑色系渐变，避免渲染崩溃
+      return 'background: linear-gradient(to right, #808080, #ff0000)';
+    }
     const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
     return `background: linear-gradient(to right, hsl(${hsl.h}, 0%, ${hsl.l}%), hsl(${hsl.h}, 100%, ${hsl.l}%))`;
   };
@@ -114,6 +125,9 @@ export const useColorPickerStore = defineStore('colorPicker', () => {
   // 获取亮度渐变
   const getLightnessGradient = () => {
     const rgb = hexToRgb(selectedColor.value);
+    if (!rgb) {
+      return 'background: linear-gradient(to right, #000000, #808080, #ffffff)';
+    }
     const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
     return `background: linear-gradient(to right, hsl(${hsl.h}, ${hsl.s}%, 0%), hsl(${hsl.h}, ${hsl.s}%, 50%), hsl(${hsl.h}, ${hsl.s}%, 100%))`;
   };

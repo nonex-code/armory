@@ -83,7 +83,12 @@ export const useJwtParseStore = defineStore('jwtParse', () => {
     try {
       const parts = jwtToken.value.trim().split('.');
       
-      if (parts.length !== 3) {
+      // 支持 alg=none 的无签名 JWT（header.payload 两段形式）
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        parts.push(''); // 空签名
+      }
+      
+      if (parts.length !== 3 || !parts[0] || !parts[1]) {
         throw new Error('无效的JWT格式，JWT应包含三部分（header.payload.signature）');
       }
       

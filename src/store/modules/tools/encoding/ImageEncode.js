@@ -16,8 +16,8 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
   const supportedFormats = ref([
     { value: 'png', label: 'PNG' },
     { value: 'jpeg', label: 'JPEG' },
-    { value: 'webp', label: 'WebP' },
-    { value: 'gif', label: 'GIF' }
+    { value: 'webp', label: 'WebP' }
+    // 注意：浏览器 canvas 不支持 GIF 编码，故不提供 GIF 输出选项
   ]);
 
   const isProcessing = computed(() => processing.value);
@@ -64,7 +64,7 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
           type: file.type,
           width: img.width,
           height: img.height,
-          aspectRatio: (img.width / img.height).toFixed(2),
+          aspectRatio: img.height > 0 ? (img.width / img.height).toFixed(2) : '—',
           formattedSize: formatFileSize(file.size)
         });
       };
@@ -89,6 +89,11 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
           img.onerror = reject;
           img.src = imageDataUrl;
         });
+        
+        // 超大图片防护：canvas 尺寸过大会耗尽内存
+        if (img.width * img.height > 160 * 1024 * 1024) {
+          throw new Error('图片像素尺寸过大（超过1.6亿像素），已拒绝编码');
+        }
         
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -129,7 +134,9 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
       
       let imageDataUrl = base64String.trim();
       if (!imageDataUrl.startsWith('data:image/')) {
-        imageDataUrl = `data:image/png;base64,${imageDataUrl}`;
+        // 无前缀时按文件头魔数推断真实图片类型
+        const mimeType = guessImageMimeType(imageDataUrl);
+        imageDataUrl = `data:${mimeType};base64,${imageDataUrl}`;
       }
       
       const img = new Image();
@@ -139,13 +146,18 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
         img.src = imageDataUrl;
       });
       
+      // 超大图片防护：防止解压炸弹（尺寸极大而文件很小）
+      if (img.width * img.height > 160 * 1024 * 1024) {
+        throw new Error('图片像素尺寸过大（超过1.6亿像素），已拒绝解码');
+      }
+      
       decodedImage.value = imageDataUrl;
       base64Output.value = '';
       
       imageInfo.value = {
         width: img.width,
         height: img.height,
-        aspectRatio: (img.width / img.height).toFixed(2),
+        aspectRatio: img.height > 0 ? (img.width / img.height).toFixed(2) : '—',
         type: imageDataUrl.match(/data:image\/([^;]+)/)?.[1] || 'unknown'
       };
     } catch (error) {
@@ -154,6 +166,18 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
     } finally {
       processing.value = false;
     }
+  };
+
+  // 根据 Base64 文件头魔数推断图片 MIME 类型
+  const guessImageMimeType = (base64) => {
+    const clean = base64.replace(/\s+/g, '');
+    if (clean.startsWith('/9j/')) return 'image/jpeg';
+    if (clean.startsWith('iVBOR')) return 'image/png';
+    if (clean.startsWith('R0lGOD')) return 'image/gif';
+    if (clean.startsWith('UklGR')) return 'image/webp';
+    if (clean.startsWith('Qk')) return 'image/bmp';
+    if (clean.startsWith('SUkq')) return 'image/tiff';
+    return 'image/png'; // 无法识别时默认 PNG
   };
 
   const isValidImageBase64 = (base64) => {
@@ -246,6 +270,9 @@ export const useImageEncodeStore = defineStore('imageEncode', () => {
     reader.onload = async (e) => {
       imagePreview.value = e.target.result;
       imageInfo.value = await getImageInfo(file, e.target.result);
+    };
+    reader.onerror = () => {
+      setError('图片读取失败，请重试');
     };
     reader.readAsDataURL(file);
   };

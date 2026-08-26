@@ -1,6 +1,24 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
+// IP 归属地查询 API（https + CORS 免费开放，无需 token）
+const IP_LOOKUP_API = 'https://ipwho.is/';
+
+// 带超时的 fetch
+const fetchWithTimeout = async (url, timeoutMs = 10000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`请求失败（HTTP ${response.status}）`);
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 export const useIpLookupStore = defineStore('ipLookup', () => {
   // 状态
   const queryInput = ref('');
@@ -8,6 +26,8 @@ export const useIpLookupStore = defineStore('ipLookup', () => {
   const error = ref('');
   const loading = ref(false);
   const history = ref([]);
+  // 请求序号，防止并发查询时旧结果覆盖新结果
+  let requestSeq = 0;
   
   // 计算属性
   const canLookup = computed(() => {
@@ -18,137 +38,140 @@ export const useIpLookupStore = defineStore('ipLookup', () => {
     return history.value.length > 0;
   });
   
-  // 模拟IP查询（实际项目中应该调用API）
-  const lookupIp = async () => {
-    if (!canLookup.value) return;
-    
-    loading.value = true;
-    error.value = '';
-    
-    try {
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const input = queryInput.value.trim();
-      
-      // 模拟不同的查询结果
-      if (input === '8.8.8.8') {
-        result.value = {
-          ip: '8.8.8.8',
-          type: 'IPv4',
-          country: '美国',
-          city: '芒廷维尤',
-          isp: 'Google LLC',
-          org: 'Google LLC',
-          asn: 'AS15169',
-          timezone: 'America/Los_Angeles',
-          lat: 37.4056,
-          lon: -122.0775,
-          postal: '94043',
-          region: '加利福尼亚'
-        };
-      } else if (input === 'google.com') {
-        result.value = {
-          ip: '142.250.191.206',
-          type: 'IPv4',
-          country: '美国',
-          city: '芒廷维尤',
-          isp: 'Google LLC',
-          org: 'Google LLC',
-          asn: 'AS15169',
-          timezone: 'America/Los_Angeles',
-          lat: 37.4056,
-          lon: -122.0775,
-          postal: '94043',
-          region: '加利福尼亚'
-        };
-      } else if (input === '1.1.1.1') {
-        result.value = {
-          ip: '1.1.1.1',
-          type: 'IPv4',
-          country: '美国',
-          city: '洛杉矶',
-          isp: 'Cloudflare, Inc.',
-          org: 'APNIC and Cloudflare DNS Resolver project',
-          asn: 'AS13335',
-          timezone: 'America/Los_Angeles',
-          lat: 34.0522,
-          lon: -118.2437,
-          postal: '90001',
-          region: '加利福尼亚'
-        };
-      } else {
-        // 随机生成模拟数据
-        const countries = ['中国', '美国', '日本', '德国', '英国', '法国', '加拿大', '澳大利亚'];
-        const cities = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安'];
-        const isps = ['中国电信', '中国联通', '中国移动', 'Google LLC', 'Cloudflare, Inc.', 'Amazon.com, Inc.'];
-        
-        result.value = {
-          ip: input.includes('.') ? input : '192.168.1.1',
-          type: 'IPv4',
-          country: countries[Math.floor(Math.random() * countries.length)],
-          city: cities[Math.floor(Math.random() * cities.length)],
-          isp: isps[Math.floor(Math.random() * isps.length)],
-          org: isps[Math.floor(Math.random() * isps.length)],
-          asn: `AS${Math.floor(Math.random() * 100000)}`,
-          timezone: 'Asia/Shanghai',
-          lat: 39.9042 + (Math.random() - 0.5) * 10,
-          lon: 116.4074 + (Math.random() - 0.5) * 10,
-          postal: '100000',
-          region: '北京'
-        };
+  // 输入校验：IPv4 / IPv6 / 合法域名
+  const validateInput = (input) => {
+    // IPv4
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(input)) {
+      const parts = input.split('.');
+      if (parts.every(part => {
+        if (part.length > 1 && part.startsWith('0')) return false;
+        const num = parseInt(part, 10);
+        return num >= 0 && num <= 255;
+      })) {
+        return true;
       }
-      
-      // 添加到历史记录
-      history.value.unshift({
-        query: input,
-        result: result.value,
-        timestamp: new Date().toISOString()
-      });
-      
-      // 限制历史记录数量
-      if (history.value.length > 10) {
-        history.value = history.value.slice(0, 10);
+      throw new Error('IPv4 地址格式不正确（每段 0-255，不允许前导零）');
+    }
+    
+    // IPv6（含缩写形式）
+    if (input.includes(':')) {
+      const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$|^::$|^[0-9a-fA-F]{1,4}(::[0-9a-fA-F]{1,4})*$/;
+      if (ipv6Regex.test(input)) {
+        return true;
       }
-      
-    } catch (err) {
-      error.value = '查询失败：' + err.message;
-      result.value = null;
-    } finally {
-      loading.value = false;
+      throw new Error('IPv6 地址格式不正确');
+    }
+    
+    // 域名（RFC 1123 主机名）
+    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    if (domainRegex.test(input)) {
+      return true;
+    }
+    
+    throw new Error('请输入有效的 IPv4、IPv6 地址或域名');
+  };
+  
+  // 规范化 API 返回的数据结构
+  const normalizeResult = (data) => {
+    if (!data || data.success === false) {
+      throw new Error((data && data.message) || '未查询到该地址的归属地信息');
+    }
+    return {
+      ip: data.ip,
+      type: data.type || (data.ip && data.ip.includes(':') ? 'IPv6' : 'IPv4'),
+      country: data.country || '未知',
+      countryCode: data.country_code || '',
+      city: data.city || '未知',
+      isp: data.connection?.isp || data.isp || '未知',
+      org: data.connection?.org || data.org || '',
+      asn: data.connection?.asn ? `AS${data.connection.asn}` : '',
+      timezone: data.timezone?.id || data.timezone || '',
+      lat: data.latitude,
+      lon: data.longitude,
+      postal: data.postal || '',
+      region: data.region || ''
+    };
+  };
+  
+  const addToHistory = (query, data) => {
+    history.value.unshift({
+      query,
+      result: data,
+      timestamp: new Date().toISOString()
+    });
+    if (history.value.length > 10) {
+      history.value = history.value.slice(0, 10);
     }
   };
   
-  // 查询本机IP
+  // 查询 IP 归属地（基于公开 API ipwho.is）
+  const lookupIp = async () => {
+    const input = queryInput.value.trim();
+    if (!input) return;
+    
+    try {
+      validateInput(input);
+    } catch (validationError) {
+      error.value = validationError.message;
+      result.value = null;
+      return;
+    }
+    
+    loading.value = true;
+    error.value = '';
+    const seq = ++requestSeq;
+    
+    try {
+      const data = await fetchWithTimeout(`${IP_LOOKUP_API}${encodeURIComponent(input)}`);
+      
+      // 只接受最后一次请求的结果
+      if (seq !== requestSeq) return;
+      
+      const normalized = normalizeResult(data);
+      result.value = normalized;
+      addToHistory(input, normalized);
+    } catch (err) {
+      if (seq !== requestSeq) return;
+      if (err.name === 'AbortError') {
+        error.value = '查询超时，请检查网络后重试';
+      } else {
+        error.value = `查询失败：${err.message || '未知错误'}`;
+      }
+      result.value = null;
+    } finally {
+      if (seq === requestSeq) {
+        loading.value = false;
+      }
+    }
+  };
+  
+  // 查询本机公网IP
   const getMyIp = async () => {
     queryInput.value = '';
     loading.value = true;
     error.value = '';
+    const seq = ++requestSeq;
     
     try {
-      // 模拟获取本机IP
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const data = await fetchWithTimeout(IP_LOOKUP_API);
       
-      // 模拟本机IP（实际项目中应该调用API）
-      result.value = {
-        ip: '192.168.1.100',
-        type: 'IPv4',
-        country: '中国',
-        city: '北京',
-        isp: '中国电信',
-        org: '中国电信',
-        asn: 'AS4134',
-        timezone: 'Asia/Shanghai',
-        lat: 39.9042,
-        lon: 116.4074,
-        postal: '100000',
-        region: '北京'
-      };
+      if (seq !== requestSeq) return;
       
+      const normalized = normalizeResult(data);
+      result.value = normalized;
+      addToHistory(normalized.ip, normalized);
     } catch (err) {
-      error.value = '获取本机IP失败：' + err.message;
+      if (seq !== requestSeq) return;
+      if (err.name === 'AbortError') {
+        error.value = '获取本机IP超时，请检查网络后重试';
+      } else {
+        error.value = `获取本机IP失败：${err.message || '未知错误'}`;
+      }
+      result.value = null;
     } finally {
-      loading.value = false;
+      if (seq === requestSeq) {
+        loading.value = false;
+      }
     }
   };
   

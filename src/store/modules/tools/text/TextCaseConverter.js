@@ -25,6 +25,15 @@ export const useTextCaseConverterStore = defineStore('textCaseConverter', () => 
     chars: outputText.value ? outputText.value.length : 0
   }));
   
+  // 分词：按大小写边界、空白、常见分隔符拆分单词（保留中文等非 ASCII 字符）
+  const splitWords = (text) => {
+    return text
+      .replace(/([a-z\d])([A-Z])/g, '$1 $2')       // camelCase 边界
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')    // 连续大写后接小写
+      .split(/[\s_\-.,!?;:()\[\]{}'"`]+/)
+      .filter(Boolean);
+  };
+
   // 大小写转换函数
   const convertCase = () => {
     if (!inputText.value) return;
@@ -46,32 +55,40 @@ export const useTextCaseConverterStore = defineStore('textCaseConverter', () => 
         result = text.toLowerCase();
         break;
       case 'titlecase':
-        result = text.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+        // 排除撇号后词首（don't → Don't 而不是 Don'T）
+        result = text.toLowerCase().replace(/(^|\s)\w/g, char => char.toUpperCase());
         break;
       case 'sentencecase':
-        result = text.toLowerCase().replace(/(^|\.\s+|\?\s+|!\s+)\w/g, match => match.toUpperCase());
+        result = text.toLowerCase().replace(/(^|[.!?]\s+)\w/g, match => match.toUpperCase());
         break;
-      case 'camelcase':
-        result = text.toLowerCase()
-          .replace(/[^a-zA-Z0-9]+(.)/g, (_, char) => char.toUpperCase())
-          .replace(/^./, char => char.toLowerCase());
+      case 'camelcase': {
+        const words = splitWords(text);
+        result = words
+          .map((word, index) => index === 0
+            ? word.toLowerCase()
+            : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join('');
         break;
-      case 'pascalcase':
-        result = text.toLowerCase()
-          .replace(/[^a-zA-Z0-9]+(.)/g, (_, char) => char.toUpperCase())
-          .replace(/^./, char => char.toUpperCase());
+      }
+      case 'pascalcase': {
+        const words = splitWords(text);
+        result = words
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join('');
         break;
+      }
       case 'snakecase':
-        result = text.toLowerCase().replace(/\s+/g, '_');
+        result = splitWords(text).join('_').toLowerCase();
         break;
       case 'kebabcase':
-        result = text.toLowerCase().replace(/\s+/g, '-');
+        result = splitWords(text).join('-').toLowerCase();
         break;
       case 'constantcase':
-        result = text.toUpperCase().replace(/\s+/g, '_');
+        result = splitWords(text).join('_').toUpperCase();
         break;
       case 'capitalcase':
-        result = text.replace(/\b\w/g, char => char.toUpperCase());
+        // 每个单词首字母大写，其余字母小写
+        result = text.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
         break;
       case 'invertcase':
         result = text.split('').map(char => 
@@ -79,6 +96,8 @@ export const useTextCaseConverterStore = defineStore('textCaseConverter', () => 
         ).join('');
         break;
       default:
+        // 未知类型不静默返回原文，给出提示
+        console.warn(`未知的转换类型: ${conversionType.value}`);
         result = text;
     }
     

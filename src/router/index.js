@@ -61,12 +61,10 @@ const router = createRouter({
 export const addToolRoutes = async () => {
   // 防止重复初始化
   if (routesInitialized) {
-    console.log('工具路由已初始化，跳过重复添加');
     return;
   }
   
   try {
-    console.log('开始添加工具路由...');
     // 确保工具服务已初始化
     if (!toolService.initialized) {
       await toolService.init();
@@ -74,16 +72,12 @@ export const addToolRoutes = async () => {
     
     // 获取工具路由
     const toolRoutes = toolService.generateRoutes();
-    console.log('获取到的工具路由数量:', toolRoutes.length);
     
     // 添加工具路由到根路由
     toolRoutes.forEach(route => {
       // 检查路由是否已存在，防止重复添加
       if (!router.hasRoute(route.name)) {
         router.addRoute(route);
-        console.log(`已添加工具路由: ${route.name} (${route.path})`);
-      } else {
-        console.log(`路由 ${route.name} 已存在，跳过添加`);
       }
     });
     
@@ -119,7 +113,6 @@ router.beforeEach(async (to, from, next) => {
     try {
       // 检查当前路由列表是否为空（即工具路由是否已初始化）
       if (!routesInitialized) {
-        console.log('路由守卫: 工具路由未初始化，开始初始化');
         await toolService.init();
         await addToolRoutes();
         
@@ -127,12 +120,10 @@ router.beforeEach(async (to, from, next) => {
         const tool = toolService.getToolByPath(to.path);
         if (tool) {
           // 如果工具存在，重新导航以触发新添加的路由
-          console.log('路由守卫: 工具存在，重新导航');
           next({ path: to.path, force: true });
           return;
         } else {
           // 如果工具不存在，跳转到404
-          console.log('路由守卫: 工具不存在，跳转到404');
           next({ name: 'NotFound' });
           return;
         }
@@ -141,7 +132,6 @@ router.beforeEach(async (to, from, next) => {
       // 如果路由已初始化，检查工具是否存在
       const tool = toolService.getToolByPath(to.path);
       if (!tool) {
-        console.log('路由守卫: 工具不存在，跳转到404');
         next({ name: 'NotFound' });
         return;
       }
@@ -155,8 +145,6 @@ router.beforeEach(async (to, from, next) => {
   
   // 如果是404路由，先检查是否是工具路由
   if (to.name === 'NotFound' && to.path.startsWith('/tools/')) {
-    console.log('路由守卫: 检测到工具路径被匹配到404，尝试重新初始化');
-    
     try {
       // 确保工具服务已初始化
       if (!toolService.initialized) {
@@ -172,7 +160,6 @@ router.beforeEach(async (to, from, next) => {
         }
         
         // 重新导航到工具路径
-        console.log('路由守卫: 工具存在，重新导航到工具页面');
         next({ path: to.path, force: true });
         return;
       }

@@ -81,14 +81,20 @@
         
         <!-- 操作按钮 -->
         <div class="flex gap-2">
-          <button class="btn btn-primary" @click="sendRequest" :disabled="!requestUrl">
-            <BaseIcon name="paper-plane" custom-class="h-5 w-5 mr-2" />
-            发送请求
+          <button class="btn btn-primary" @click="sendRequest" :disabled="!requestUrl || isSending">
+            <span v-if="isSending" class="loading loading-spinner loading-sm mr-2"></span>
+            {{ isSending ? '发送中...' : '发送请求' }}
           </button>
-          <button class="btn btn-outline" @click="clearRequest">
+          <button class="btn btn-outline" @click="clearRequest" :disabled="isSending">
             <BaseIcon name="trash" custom-class="h-5 w-5 mr-2" />
             清空
           </button>
+        </div>
+        
+        <!-- 安全提示 -->
+        <div class="alert alert-warning mt-4 text-sm">
+          <BaseIcon name="warning" custom-class="h-5 w-5 shrink-0" />
+          <span>请求直接由你的浏览器发出（受 CORS 限制），可访问内网地址。请勿对未知目标发起请求。</span>
         </div>
         
         <!-- 响应结果 -->
@@ -164,6 +170,7 @@ const requestHeaders = ref([
 const requestBody = ref('');
 const response = ref(null);
 const error = ref('');
+const isSending = ref(false);
 
 // 添加请求头
 const addHeader = () => {
@@ -182,24 +189,50 @@ const sendRequest = async () => {
     return;
   }
 
+  // 校验并规范化 URL
+  let url = requestUrl.value.trim();
+  try {
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      error.value = '仅支持 http/https 协议的 URL';
+      return;
+    }
+  } catch {
+    error.value = 'URL 格式不正确';
+    return;
+  }
+
   error.value = '';
   response.value = null;
+  isSending.value = true;
+
+  // 请求超时（30秒）
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
     const startTime = Date.now();
     
-    // 构建请求头对象
-    const headers = {};
+    // 构建请求头（使用 Headers 对象，避免 __proto__ 等特殊键污染）
+    const headers = new Headers();
     requestHeaders.value.forEach(header => {
       if (header.key && header.value) {
-        headers[header.key] = header.value;
+        try {
+          headers.append(header.key, header.value);
+        } catch (e) {
+          console.warn(`无效的请求头: ${header.key}`, e);
+        }
       }
     });
 
     // 构建请求选项
     const options = {
       method: requestMethod.value,
-      headers: headers
+      headers: headers,
+      signal: controller.signal
     };
 
     // 添加请求体（如果适用）
@@ -208,18 +241,33 @@ const sendRequest = async () => {
     }
 
     // 发送请求
-    const fetchResponse = await fetch(requestUrl.value, options);
+    const fetchResponse = await fetch(url, options);
     const endTime = Date.now();
     
-    // 获取响应数据
-    let data;
+    // 获取响应数据（限制响应体大小，防止超大响应卡死页面）
     const contentType = fetchResponse.headers.get('content-type') || '';
+    let data;
     
     if (contentType.includes('application/json')) {
-      data = await fetchResponse.json();
-      data = JSON.stringify(data, null, 2);
+      try {
+        data = await fetchResponse.json();
+        data = JSON.stringify(data, null, 2);
+      } catch {
+        // JSON 解析失败：请求本身成功，响应内容非法
+        const rawText = await fetchResponse.text();
+        data = rawText.length > 0
+          ? `[响应不是合法的 JSON，已按文本显示]\n${rawText}`
+          : '[响应不是合法的 JSON，且内容为空]';
+      }
+    } else if (contentType.startsWith('image/') || contentType.startsWith('application/octet-stream') || contentType.includes('zip')) {
+      // 二进制响应：不读取全文
+      const blob = await fetchResponse.blob();
+      data = `[二进制内容，大小 ${(blob.size / 1024).toFixed(1)} KB]`;
     } else {
       data = await fetchResponse.text();
+      if (data.length > 2 * 1024 * 1024) {
+        data = data.slice(0, 2 * 1024 * 1024) + '\n...[响应过大，已截断]';
+      }
     }
 
     // 构建响应对象
@@ -232,7 +280,16 @@ const sendRequest = async () => {
     };
 
   } catch (err) {
-    error.value = `请求失败: ${err.message}`;
+    if (err.name === 'AbortError') {
+      error.value = '请求超时（30秒无响应）';
+    } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      error.value = '请求失败：无法连接到目标地址（可能是网络问题、CORS 限制或地址无法访问）';
+    } else {
+      error.value = `请求失败: ${err.message}`;
+    }
+  } finally {
+    clearTimeout(timeoutId);
+    isSending.value = false;
   }
 };
 

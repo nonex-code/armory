@@ -139,18 +139,21 @@ export const useCaesarCipherStore = defineStore('caesarCipher', () => {
     }
   };
   
-  // 随机偏移量
+  // 随机偏移量（根据当前字符集大小生成）
   const randomShift = () => {
-    shift.value = Math.floor(Math.random() * 25) + 1;
+    const chars = getCharset();
+    shift.value = Math.floor(Math.random() * (chars.length - 1)) + 1;
   };
   
-  // 暴力破解
+  // 暴力破解（遍历当前字符集的所有可能偏移）
   const bruteForce = () => {
     if (!inputText.value) return;
     
+    const chars = getCharset();
     bruteForceResults.value = [];
     
-    for (let i = 1; i < 26; i++) {
+    // 偏移范围 1 ~ charset.length-1，覆盖所有有效偏移
+    for (let i = 1; i < chars.length; i++) {
       const result = caesarCipher(inputText.value, i, true);
       bruteForceResults.value.push({
         shift: i,
@@ -212,16 +215,16 @@ export const useCaesarCipherStore = defineStore('caesarCipher', () => {
   };
   
   // 复制结果
-  const copyResult = () => {
-    if (!outputText.value) return;
+  const copyResult = async () => {
+    if (!outputText.value) return false;
     
-    navigator.clipboard.writeText(outputText.value)
-      .then(() => {
-        // 可以添加一个toast通知
-      })
-      .catch(err => {
-        console.error('复制失败:', err);
-      });
+    try {
+      await navigator.clipboard.writeText(outputText.value);
+      return true;
+    } catch (err) {
+      console.error('复制失败:', err);
+      return false;
+    }
   };
   
   // 交换输入输出

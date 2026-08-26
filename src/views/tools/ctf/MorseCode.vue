@@ -88,7 +88,7 @@
           <button 
             class="btn btn-outline" 
             @click="playSound"
-            :disabled="!outputText || operationMode === 'encode'"
+            :disabled="!outputText || operationMode === 'decode'"
           >
             <BaseIcon name="volume-up" custom-class="h-5 w-5 mr-2" />
             播放声音
@@ -234,9 +234,9 @@ const processMorse = () => {
   }
 };
 
-// 播放摩斯电码声音
+// 播放摩斯电码声音（仅编码模式：输出内容为电码时可播放）
 const playSound = () => {
-  if (!outputText.value || operationMode.value === 'encode') return;
+  if (!outputText.value || operationMode.value === 'decode') return;
   
   try {
     // 简单的音频播放实现

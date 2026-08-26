@@ -39,8 +39,9 @@
               <button 
                 class="btn btn-primary"
                 @click="lookupIp"
-                :disabled="!canLookup"
+                :disabled="!canLookup || loading"
               >
+                <span v-if="loading" class="loading loading-spinner loading-sm mr-1"></span>
                 查询
               </button>
             </div>
@@ -62,6 +63,7 @@
             <button 
               class="btn btn-sm btn-ghost"
               @click="getMyIp"
+              :disabled="loading"
             >
               查询本机IP
             </button>
@@ -227,9 +229,10 @@
           <div>
             <h3 class="font-semibold text-lg mb-2">注意事项</h3>
             <ul class="list-disc list-inside space-y-1 text-sm">
-              <li>查询结果基于公开的IP地理位置数据库</li>
+              <li>查询结果基于公开 API（ipwho.is）提供的IP地理位置数据库</li>
               <li>某些IP地址可能无法获取完整的地理位置信息</li>
-              <li>本机IP查询显示的是公网IP地址</li>
+              <li>本机IP查询显示的是当前网络的公网出口IP地址</li>
+              <li>私有地址（如 192.168.x.x）和保留地址通常没有归属地信息</li>
               <li>查询结果仅供参考</li>
             </ul>
           </div>

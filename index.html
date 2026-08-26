@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 	<meta charset="UTF-8"/>
 	<link rel="icon" type="image/svg+xml" href="/logo.svg"/>
@@ -23,6 +23,17 @@
 			} catch (e) {
 				console.error('Error setting theme:', e);
 			}
+		})();
+
+		// GitHub Pages SPA 回退：恢复 404.html 暂存的原始地址
+		(function() {
+			try {
+				const redirect = sessionStorage.getItem('spa-redirect');
+				if (redirect && redirect !== window.location.href) {
+					sessionStorage.removeItem('spa-redirect');
+					window.history.replaceState(null, '', redirect);
+				}
+			} catch (e) { /* ignore */ }
 		})();
 	</script>
 </head>

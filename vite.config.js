@@ -13,7 +13,7 @@ export default defineConfig(({mode}) => ({
 		tailwindcss(),
 		VitePWA({
 			registerType: 'autoUpdate',
-			includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+			includeAssets: ['logo.svg'],
 			manifest: {
 				name: 'Web Tools Armory',
 				short_name: 'Armory',
@@ -26,17 +26,17 @@ export default defineConfig(({mode}) => ({
 				start_url: '/',
 				icons: [
 					{
-						src: '/vite.svg',
+						src: '/logo.svg',
 						sizes: '192x192',
 						type: 'image/svg+xml'
 					},
 					{
-						src: '/vite.svg',
+						src: '/logo.svg',
 						sizes: '512x512',
 						type: 'image/svg+xml'
 					},
 					{
-						src: '/vite.svg',
+						src: '/logo.svg',
 						sizes: '512x512',
 						type: 'image/svg+xml',
 						purpose: 'any maskable'

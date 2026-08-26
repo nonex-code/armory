@@ -40,7 +40,6 @@
               v-model="inputText"
               class="textarea textarea-bordered h-64 w-full font-mono text-sm" 
               placeholder="在此输入需要统计的文本..."
-              @input="analyzeText"
             ></textarea>
           </div>
         </div>
@@ -55,25 +54,25 @@
           <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="stat">
               <div class="stat-title">字符数</div>
-              <div class="stat-value text-primary">{{ statistics.characters }}</div>
+              <div class="stat-value text-primary">{{ stats.characters }}</div>
               <div class="stat-desc">包含空格</div>
             </div>
             
             <div class="stat">
               <div class="stat-title">字符数</div>
-              <div class="stat-value text-secondary">{{ statistics.charactersNoSpaces }}</div>
+              <div class="stat-value text-secondary">{{ stats.charactersNoSpaces }}</div>
               <div class="stat-desc">不含空格</div>
             </div>
             
             <div class="stat">
               <div class="stat-title">单词数</div>
-              <div class="stat-value text-accent">{{ statistics.words }}</div>
-              <div class="stat-desc">英文单词</div>
+              <div class="stat-value text-accent">{{ stats.words }}</div>
+              <div class="stat-desc">英文单词 + 中文字符</div>
             </div>
             
             <div class="stat">
               <div class="stat-title">行数</div>
-              <div class="stat-value text-info">{{ statistics.lines }}</div>
+              <div class="stat-value text-info">{{ stats.lines }}</div>
               <div class="stat-desc">文本行数</div>
             </div>
           </div>
@@ -83,34 +82,34 @@
             <div class="stats stats-vertical shadow">
               <div class="stat">
                 <div class="stat-title">句子数</div>
-                <div class="stat-value">{{ statistics.sentences }}</div>
+                <div class="stat-value">{{ stats.sentences }}</div>
               </div>
               
               <div class="stat">
                 <div class="stat-title">段落数</div>
-                <div class="stat-value">{{ statistics.paragraphs }}</div>
+                <div class="stat-value">{{ stats.paragraphs }}</div>
               </div>
               
               <div class="stat">
                 <div class="stat-title">空格数</div>
-                <div class="stat-value">{{ statistics.spaces }}</div>
+                <div class="stat-value">{{ stats.spaces }}</div>
               </div>
             </div>
             
             <div class="stats stats-vertical shadow">
               <div class="stat">
                 <div class="stat-title">字母数</div>
-                <div class="stat-value">{{ statistics.letters }}</div>
+                <div class="stat-value">{{ stats.letters }}</div>
               </div>
               
               <div class="stat">
                 <div class="stat-title">数字数</div>
-                <div class="stat-value">{{ statistics.digits }}</div>
+                <div class="stat-value">{{ stats.digits }}</div>
               </div>
               
               <div class="stat">
                 <div class="stat-title">标点数</div>
-                <div class="stat-value">{{ statistics.punctuations }}</div>
+                <div class="stat-value">{{ stats.punctuations }}</div>
               </div>
             </div>
           </div>
@@ -128,8 +127,11 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(freq, char) in statistics.charFrequency" :key="char">
-                    <td class="font-mono">{{ char === ' ' ? '[空格]' : char === '\n' ? '[换行]' : char }}</td>
+                  <tr v-if="charFrequency.length === 0">
+                    <td colspan="3" class="text-center text-base-content/50">暂无数据</td>
+                  </tr>
+                  <tr v-for="freq in charFrequency" :key="freq.char">
+                    <td class="font-mono">{{ freq.char === ' ' ? '[空格]' : freq.char === '\n' ? '[换行]' : freq.char === '\t' ? '[制表符]' : freq.char }}</td>
                     <td>{{ freq.count }}</td>
                     <td>{{ freq.percentage.toFixed(2) }}</td>
                   </tr>
@@ -149,19 +151,19 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <!-- 阅读时间 -->
           <div class="text-center">
-            <div class="text-4xl font-bold text-primary">{{ statistics.readingTime }}</div>
+            <div class="text-4xl font-bold text-primary">{{ stats.readingTime }}</div>
             <div class="text-sm text-base-content/70">阅读时间(分钟)</div>
           </div>
           
           <!-- 平均单词长度 -->
           <div class="text-center">
-            <div class="text-4xl font-bold text-secondary">{{ statistics.avgWordLength }}</div>
+            <div class="text-4xl font-bold text-secondary">{{ stats.avgWordLength }}</div>
             <div class="text-sm text-base-content/70">平均单词长度</div>
           </div>
           
           <!-- 平均句子长度 -->
           <div class="text-center">
-            <div class="text-4xl font-bold text-accent">{{ statistics.avgSentenceLength }}</div>
+            <div class="text-4xl font-bold text-accent">{{ stats.avgSentenceLength }}</div>
             <div class="text-sm text-base-content/70">平均句子长度</div>
           </div>
         </div>
@@ -169,22 +171,22 @@
         <!-- 文本密度 -->
         <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div class="text-center">
-            <div class="text-2xl font-bold">{{ statistics.letterDensity.toFixed(2) }}%</div>
+            <div class="text-2xl font-bold">{{ stats.letterDensity.toFixed(2) }}%</div>
             <div class="text-sm text-base-content/70">字母密度</div>
           </div>
           
           <div class="text-center">
-            <div class="text-2xl font-bold">{{ statistics.digitDensity.toFixed(2) }}%</div>
+            <div class="text-2xl font-bold">{{ stats.digitDensity.toFixed(2) }}%</div>
             <div class="text-sm text-base-content/70">数字密度</div>
           </div>
           
           <div class="text-center">
-            <div class="text-2xl font-bold">{{ statistics.punctuationDensity.toFixed(2) }}%</div>
+            <div class="text-2xl font-bold">{{ stats.punctuationDensity.toFixed(2) }}%</div>
             <div class="text-sm text-base-content/70">标点密度</div>
           </div>
           
           <div class="text-center">
-            <div class="text-2xl font-bold">{{ statistics.spaceDensity.toFixed(2) }}%</div>
+            <div class="text-2xl font-bold">{{ stats.spaceDensity.toFixed(2) }}%</div>
             <div class="text-sm text-base-content/70">空格密度</div>
           </div>
         </div>
@@ -226,7 +228,6 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTextStatisticsStore } from '@/store/modules/tools/text/TextStatistics.js'
 
@@ -248,150 +249,15 @@ defineOptions({
   }
 })
 
-// 使用store
+// 使用store（统计逻辑统一在 store 中计算）
 const store = useTextStatisticsStore()
 const { 
-  inputText, 
-  showAdvancedStats, 
-  showCharacterFrequency, 
-  showWordFrequency,
+  inputText,
   hasInput,
-  basicStats,
-  advancedStats,
-  characterFrequency,
-  wordFrequency
+  basicStats: stats,
+  characterFrequency
 } = storeToRefs(store)
 
-// 统计计算（兼容现有模板）
-const statistics = ref({
-  characters: 0,
-  charactersNoSpaces: 0,
-  words: 0,
-  lines: 0,
-  sentences: 0,
-  paragraphs: 0,
-  spaces: 0,
-  letters: 0,
-  digits: 0,
-  punctuations: 0,
-  readingTime: 0,
-  avgWordLength: 0,
-  avgSentenceLength: 0,
-  letterDensity: 0,
-  digitDensity: 0,
-  punctuationDensity: 0,
-  spaceDensity: 0,
-  charFrequency: {}
-})
-
-// 监听输入文本变化，更新统计信息
-watch(inputText, (newText) => {
-  if (!newText.trim()) {
-    statistics.value = {
-      characters: 0,
-      charactersNoSpaces: 0,
-      words: 0,
-      lines: 0,
-      sentences: 0,
-      paragraphs: 0,
-      spaces: 0,
-      letters: 0,
-      digits: 0,
-      punctuations: 0,
-      readingTime: 0,
-      avgWordLength: 0,
-      avgSentenceLength: 0,
-      letterDensity: 0,
-      digitDensity: 0,
-      punctuationDensity: 0,
-      spaceDensity: 0,
-      charFrequency: {}
-    }
-    return
-  }
-  
-  // 基础统计
-  const characters = newText.length
-  const charactersNoSpaces = newText.replace(/\s/g, '').length
-  const words = newText.trim() ? newText.trim().split(/\s+/).length : 0
-  const lines = newText.split('\n').length
-  const spaces = (newText.match(/\s/g) || []).length
-  
-  // 句子统计（以.?!结尾）
-  const sentences = (newText.match(/[^.!?]*[.!?]/g) || []).length
-  
-  // 段落统计（以空行分隔）
-  const paragraphs = newText.split(/\n\s*\n/).filter(p => p.trim()).length
-  
-  // 字符类型统计
-  const letters = (newText.match(/[a-zA-Z]/g) || []).length
-  const digits = (newText.match(/\d/g) || []).length
-  const punctuations = (newText.match(/[^\w\s]/g) || []).length
-  
-  // 阅读时间估算（平均阅读速度：200-250词/分钟）
-  const readingTime = Math.ceil(words / 200)
-  
-  // 平均单词长度
-  const avgWordLength = words > 0 ? (charactersNoSpaces / words).toFixed(1) : 0
-  
-  // 平均句子长度
-  const avgSentenceLength = sentences > 0 ? (words / sentences).toFixed(1) : 0
-  
-  // 密度计算
-  const letterDensity = characters > 0 ? (letters / characters) * 100 : 0
-  const digitDensity = characters > 0 ? (digits / characters) * 100 : 0
-  const punctuationDensity = characters > 0 ? (punctuations / characters) * 100 : 0
-  const spaceDensity = characters > 0 ? (spaces / characters) * 100 : 0
-  
-  // 字符频率分析
-  const charFrequency = {}
-  const totalChars = characters
-  
-  for (let char of newText) {
-    if (!charFrequency[char]) {
-      charFrequency[char] = { count: 0, percentage: 0 }
-    }
-    charFrequency[char].count++
-  }
-  
-  // 计算百分比
-  Object.keys(charFrequency).forEach(char => {
-    charFrequency[char].percentage = (charFrequency[char].count / totalChars) * 100
-  })
-  
-  // 按频率排序
-  const sortedFrequency = Object.entries(charFrequency)
-    .sort(([,a], [,b]) => b.count - a.count)
-    .slice(0, 10) // 只显示前10个
-    .reduce((obj, [key, value]) => {
-      obj[key] = value
-      return obj
-    }, {})
-  
-  statistics.value = {
-    characters,
-    charactersNoSpaces,
-    words,
-    lines,
-    sentences,
-    paragraphs,
-    spaces,
-    letters,
-    digits,
-    punctuations,
-    readingTime,
-    avgWordLength,
-    avgSentenceLength,
-    letterDensity,
-    digitDensity,
-    punctuationDensity,
-    spaceDensity,
-    charFrequency: sortedFrequency
-  }
-}, { immediate: true })
-
-// 分析文本
-const analyzeText = () => {
-  // 监听器会自动处理
-}
+// 始终显示字符频率统计
+store.showCharacterFrequency = true
 </script>

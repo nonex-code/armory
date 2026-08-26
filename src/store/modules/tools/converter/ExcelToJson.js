@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import * as XLSX from 'xlsx';
 
 export const useExcelToJsonStore = defineStore('excelToJson', () => {
   // 状态定义
@@ -9,6 +10,7 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
   const selectedSheet = ref(0);
   const outputJson = ref('');
   const isConverting = ref(false);
+  const fileError = ref('');
   const options = ref({
     header: true,
     nullHandling: 'null', // 'null', 'empty', 'omit'
@@ -20,17 +22,42 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
   const hasOutput = computed(() => !!outputJson.value);
   const canConvert = computed(() => hasFile.value && !isConverting.value);
 
-  // 处理文件选择
+  // 处理文件选择（读取真实工作表名称）
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file) {
-      selectedFile.value = file;
+    if (!file) {
+      selectedFile.value = null;
+      sheetNames.value = [];
       outputJson.value = '';
-      // 这里应该读取Excel文件获取工作表名称
-      // 由于浏览器限制，我们使用模拟数据
-      sheetNames.value = ['Sheet1', 'Sheet2', 'Sheet3'];
-      selectedSheet.value = 0;
+      fileError.value = '';
+      return;
     }
+    
+    selectedFile.value = file;
+    outputJson.value = '';
+    fileError.value = '';
+    sheetNames.value = [];
+    selectedSheet.value = 0;
+    
+    // 读取文件获取工作表名称
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const workbook = XLSX.read(e.target.result, { type: 'array' });
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error('文件中没有工作表');
+        }
+        sheetNames.value = workbook.SheetNames;
+      } catch (error) {
+        console.error('读取Excel文件失败:', error);
+        sheetNames.value = [];
+        fileError.value = '无法读取Excel文件，请确认文件格式正确（.xlsx/.xls）';
+      }
+    };
+    reader.onerror = () => {
+      fileError.value = '文件读取失败，请重试';
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   // 清空文件
@@ -38,6 +65,7 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
     selectedFile.value = null;
     sheetNames.value = [];
     outputJson.value = '';
+    fileError.value = '';
     if (fileInput.value) {
       fileInput.value.value = '';
     }
@@ -47,12 +75,12 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 转换Excel为JSON
+  // 转换Excel为JSON（使用 SheetJS 真实解析）
   const convertToJson = async () => {
     if (!selectedFile.value) {
       throw new Error('请先选择Excel文件');
@@ -64,12 +92,50 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
       // 读取文件内容
       const fileBuffer = await readFileAsArrayBuffer(selectedFile.value);
       
-      // 在实际应用中，这里应该使用Excel解析库如SheetJS (xlsx)
-      // 由于浏览器限制，我们使用模拟数据
-      const jsonData = await simulateExcelParsing(fileBuffer);
+      // 使用 SheetJS 解析 Excel
+      const workbook = XLSX.read(fileBuffer, { type: 'array' });
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error('文件中没有工作表');
+      }
       
-      // 根据选项处理数据
-      const processedData = processExcelData(jsonData);
+      const sheetName = workbook.SheetNames[selectedSheet.value] || workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) {
+        throw new Error(`无法读取工作表: ${sheetName}`);
+      }
+      
+      // 按行读取原始数据（header:1 得到二维数组）
+      const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+      if (rawRows.length === 0) {
+        throw new Error(`工作表 "${sheetName}" 为空`);
+      }
+      
+      let processedData;
+      if (options.value.header) {
+        // 首行作为表头
+        const headers = rawRows[0].map(String);
+        processedData = rawRows.slice(1).map(row => {
+          const obj = {};
+          headers.forEach((header, index) => {
+            if (!header) return; // 跳过空表头列
+            let value = row[index];
+            if (value === null || value === undefined || value === '') {
+              if (options.value.nullHandling === 'null') {
+                value = null;
+              } else if (options.value.nullHandling === 'empty') {
+                value = '';
+              } else {
+                return; // 'omit'：忽略空值
+              }
+            }
+            obj[header] = value;
+          });
+          return obj;
+        });
+      } else {
+        // 不含表头：直接输出二维数组
+        processedData = rawRows;
+      }
       
       // 格式化JSON
       outputJson.value = formatJson(processedData);
@@ -92,56 +158,13 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
     });
   };
 
-  // 模拟Excel解析（实际应用中应使用xlsx等库）
-  const simulateExcelParsing = async (fileBuffer) => {
-    // 模拟解析延迟
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // 返回模拟数据
-    return [
-      { id: 1, name: '张三', age: 30, city: '北京' },
-      { id: 2, name: '李四', age: 25, city: '上海' },
-      { id: 3, name: '王五', age: 28, city: '广州' },
-      { id: 4, name: '赵六', age: 32, city: '深圳' }
-    ];
-  };
-
-  // 处理Excel数据
-  const processExcelData = (data) => {
-    if (!options.value.header) {
-      // 如果不包含表头，将数据转换为二维数组
-      return data.map(row => Object.values(row));
-    }
-    
-    // 根据空值处理选项处理数据
-    return data.map(row => {
-      const processedRow = {};
-      for (const key in row) {
-        if (row[key] === null || row[key] === undefined || row[key] === '') {
-          if (options.value.nullHandling === 'null') {
-            processedRow[key] = null;
-          } else if (options.value.nullHandling === 'empty') {
-            processedRow[key] = '';
-          } else if (options.value.nullHandling === 'omit') {
-            // 忽略空值，不添加到结果中
-          } else {
-            processedRow[key] = row[key];
-          }
-        } else {
-          processedRow[key] = row[key];
-        }
-      }
-      return processedRow;
-    });
-  };
-
   // 格式化JSON
   const formatJson = (data) => {
     try {
       if (options.value.indent === 'compact') {
         return JSON.stringify(data);
       } else {
-        const indentSize = parseInt(options.value.indent);
+        const indentSize = parseInt(options.value.indent, 10);
         return JSON.stringify(data, null, indentSize);
       }
     } catch (error) {
@@ -202,6 +225,7 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
     selectedSheet,
     outputJson,
     isConverting,
+    fileError,
     options,
     
     // 计算属性
@@ -215,8 +239,6 @@ export const useExcelToJsonStore = defineStore('excelToJson', () => {
     formatFileSize,
     convertToJson,
     readFileAsArrayBuffer,
-    simulateExcelParsing,
-    processExcelData,
     formatJson,
     copyResult,
     downloadResult,

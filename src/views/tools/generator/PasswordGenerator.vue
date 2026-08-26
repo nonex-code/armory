@@ -251,7 +251,7 @@ defineOptions({
       id: 'password-generator',
       name: '密码生成器',
       description: '密码生成工具，支持生成安全、随机的密码，可自定义长度和字符类型',
-      icon: '🎨',
+      icon: '🔑',
       category: 'generator',
       tags: ['密码', '生成', '安全', '随机', '强度', '内容生成'],
       enabled: true,

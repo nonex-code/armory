@@ -124,7 +124,7 @@
               <input 
                 type="radio" 
                 name="caseType" 
-                value="capitalize" 
+                value="capitalcase" 
                 v-model="conversionType" 
                 class="radio radio-primary"
               />
@@ -138,7 +138,7 @@
               <input 
                 type="radio" 
                 name="caseType" 
-                value="title" 
+                value="titlecase" 
                 v-model="conversionType" 
                 class="radio radio-primary"
               />
@@ -152,7 +152,7 @@
               <input 
                 type="radio" 
                 name="caseType" 
-                value="camel" 
+                value="camelcase" 
                 v-model="conversionType" 
                 class="radio radio-primary"
               />
@@ -166,7 +166,7 @@
               <input 
                 type="radio" 
                 name="caseType" 
-                value="snake" 
+                value="snakecase" 
                 v-model="conversionType" 
                 class="radio radio-primary"
               />
@@ -180,7 +180,7 @@
               <input 
                 type="radio" 
                 name="caseType" 
-                value="kebab" 
+                value="kebabcase" 
                 v-model="conversionType" 
                 class="radio radio-primary"
               />
@@ -194,7 +194,7 @@
               <input 
                 type="radio" 
                 name="caseType" 
-                value="sentence" 
+                value="sentencecase" 
                 v-model="conversionType" 
                 class="radio radio-primary"
               />
@@ -216,14 +216,10 @@
           </div>
           
           <div class="form-control">
-            <label class="label cursor-pointer">
-              <span class="label-text">自动转换</span>
-              <input 
-                type="checkbox" 
-                v-model="autoConvert" 
-                class="checkbox checkbox-primary"
-              />
-            </label>
+            <div class="label">
+              <span class="label-text">转换实时生效</span>
+            </div>
+            <span class="text-xs text-base-content/60">输入或选择转换类型后自动更新结果</span>
           </div>
         </div>
       </div>
@@ -239,7 +235,7 @@
             <ol class="list-decimal list-inside space-y-1 text-sm">
               <li>在输入框中粘贴或输入需要转换的文本</li>
               <li>选择需要的大小写转换类型</li>
-              <li>启用"自动转换"可以实时查看转换结果</li>
+              <li>转换结果会实时更新</li>
               <li>可以复制或交换输入输出内容</li>
             </ol>
           </div>

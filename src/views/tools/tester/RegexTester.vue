@@ -280,6 +280,10 @@ const handleTestRegex = () => {
   if (regexTesterStore.testResult?.isValid) {
     showSuccess('正则表达式测试成功');
     toolService.recordToolUsage('regex-tester', 'test');
+    // ReDoS 风险提示（isValid 为 true 但 error 为警告信息）
+    if (regexTesterStore.testResult.error) {
+      showWarning(regexTesterStore.testResult.error);
+    }
   } else {
     showError(regexTesterStore.testResult?.error || '正则表达式测试失败');
   }
@@ -291,8 +295,8 @@ const handleApplyPreset = (preset) => {
   toolService.recordToolUsage('regex-tester', 'apply-preset');
 };
 
-const handleCopyRegex = () => {
-  const success = regexTesterStore.copyRegex();
+const handleCopyRegex = async () => {
+  const success = await regexTesterStore.copyRegex();
   if (success) {
     showSuccess('正则表达式已复制到剪贴板');
     toolService.recordToolUsage('regex-tester', 'copy');

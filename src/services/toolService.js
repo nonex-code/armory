@@ -82,6 +82,15 @@ class ToolService {
   }
 
   /**
+   * 根据ID获取分类
+   * @param {string} categoryId 分类ID
+   * @returns {Object|null} 分类对象
+   */
+  getCategoryById(categoryId) {
+    return toolCategories.find(cat => cat.id === categoryId) || null;
+  }
+
+  /**
    * 搜索工具
    * @param {string} query 搜索关键词
    * @returns {Array} 匹配的工具列表

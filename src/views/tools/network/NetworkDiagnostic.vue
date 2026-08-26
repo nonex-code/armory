@@ -27,7 +27,7 @@
         <!-- Ping测试 -->
         <div class="form-control mb-4">
           <label class="label">
-            <span class="label-text">Ping测试</span>
+            <span class="label-text">连通性测试 (Ping)</span>
           </label>
           <div class="flex gap-2">
             <input 
@@ -42,9 +42,12 @@
               :disabled="!pingTarget || isPinging"
             >
               <BaseIcon name="wifi" custom-class="h-5 w-5 mr-2" />
-              {{ isPinging ? 'Pinging...' : 'Ping' }}
+              {{ isPinging ? '测试中...' : '测试' }}
             </button>
           </div>
+          <label class="label">
+            <span class="label-text-alt">通过 HTTP HEAD 请求探测目标是否可达（非 ICMP Ping）</span>
+          </label>
         </div>
         
         <!-- Ping结果 -->
@@ -65,7 +68,7 @@
                 <span>{{ result.target }}</span>
               </div>
               <div class="text-right">
-                <div class="font-medium">{{ result.success ? `${result.duration}ms` : '失败' }}</div>
+                <div class="font-medium">{{ result.success ? `${result.duration}ms` : (result.reason || '失败') }}</div>
                 <div class="text-xs text-base-content/70">{{ result.timestamp }}</div>
               </div>
             </div>
@@ -75,7 +78,7 @@
         <!-- 端口扫描 -->
         <div class="form-control mb-4">
           <label class="label">
-            <span class="label-text">端口扫描</span>
+            <span class="label-text">端口扫描（HTTP 服务探测）</span>
           </label>
           <div class="flex gap-2">
             <input 
@@ -99,6 +102,9 @@
               {{ isScanning ? '扫描中...' : '扫描' }}
             </button>
           </div>
+          <label class="label">
+            <span class="label-text-alt">受浏览器限制仅探测 HTTP/HTTPS 服务，非 HTTP 端口（如 SSH 22）即使开放也会显示"关闭"；单次最多 100 个端口</span>
+          </label>
         </div>
         
         <!-- 端口扫描结果 -->
@@ -146,7 +152,12 @@
           <div class="bg-base-200 p-4 rounded">
             <div class="space-y-2">
               <div><strong>域名:</strong> {{ dnsResults.domain }}</div>
-              <div><strong>IP地址:</strong> {{ dnsResults.ip || '未找到' }}</div>
+              <div>
+                <strong>IP地址:</strong>
+                <span v-if="dnsResults.status === 'ok'">{{ dnsResults.allIps ? dnsResults.allIps.join(', ') : dnsResults.ip }}</span>
+                <span v-else-if="dnsResults.status === 'not-found'" class="text-error">域名不存在 (NXDOMAIN)</span>
+                <span v-else class="text-warning">该域名无 A 记录</span>
+              </div>
               <div><strong>查询时间:</strong> {{ dnsResults.duration }}ms</div>
             </div>
           </div>
@@ -162,6 +173,12 @@
             <BaseIcon name="play" custom-class="h-5 w-5 mr-2" />
             运行所有测试
           </button>
+        </div>
+        
+        <!-- 安全提示 -->
+        <div class="alert alert-warning mt-4 text-sm">
+          <BaseIcon name="warning" custom-class="h-5 w-5 shrink-0" />
+          <span>请求直接由你的浏览器发出，可访问内网地址（如 127.0.0.1、192.168.x.x）。请勿在不可信环境对不明目标发起探测。</span>
         </div>
         
         <!-- 错误信息 -->
@@ -219,24 +236,33 @@ const updateOnlineStatus = () => {
   }
 };
 
-// Ping测试函数
+// 跟踪在途请求的 AbortController，组件卸载时统一中断
+const activeControllers = new Set();
+
+const trackController = (controller) => {
+  activeControllers.add(controller);
+  const cleanup = () => activeControllers.delete(controller);
+  controller.signal.addEventListener('abort', cleanup, { once: true });
+  return controller;
+};
+
+// Ping测试函数（HTTP 连通性探测：能建立 HTTP 连接即视为可达）
 const pingTest = async () => {
   if (!pingTarget.value.trim()) return;
   
   isPinging.value = true;
   error.value = '';
   
+  const target = pingTarget.value.startsWith('http') ? pingTarget.value : `https://${pingTarget.value}`;
+  const controller = trackController(new AbortController());
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const startTime = Date.now();
+  
   try {
-    const startTime = Date.now();
-    
-    // 使用Image对象进行简单的连通性测试
-    const img = new Image();
-    const target = pingTarget.value.startsWith('http') ? pingTarget.value : `https://${pingTarget.value}`;
-    
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = `${target}/favicon.ico?t=${Date.now()}`;
+    await fetch(target, {
+      method: 'HEAD',
+      signal: controller.signal,
+      mode: 'no-cors'
     });
     
     const duration = Date.now() - startTime;
@@ -253,44 +279,59 @@ const pingTest = async () => {
       target: pingTarget.value,
       success: false,
       duration: 0,
+      reason: err.name === 'AbortError' ? '超时（5秒无响应）' : '连接失败',
       timestamp: new Date().toLocaleTimeString()
     });
   } finally {
+    clearTimeout(timeoutId);
     isPinging.value = false;
+    // 限制结果列表长度
+    pingResults.value = pingResults.value.slice(0, 20);
   }
 };
 
-// 端口扫描函数
+// 端口扫描函数（HTTP 服务探测）
 const portScan = async () => {
   if (!scanHost.value.trim() || !scanPorts.value.trim()) return;
+  
+  // 校验端口范围格式
+  const portStr = scanPorts.value.trim();
+  if (!/^\d+(-\d+)?$/.test(portStr)) {
+    error.value = '端口范围格式不正确，请输入如 80 或 80-100';
+    return;
+  }
+  
+  const [startStr, endStr] = portStr.split('-');
+  const start = parseInt(startStr, 10);
+  const end = endStr ? parseInt(endStr, 10) : start;
+  
+  if (start < 1 || end > 65535 || start > end) {
+    error.value = '端口范围无效（范围 1-65535，起始端口不能大于结束端口）';
+    return;
+  }
+  
+  if (end - start + 1 > 100) {
+    error.value = '单次扫描端口数不能超过 100 个，请缩小范围';
+    return;
+  }
   
   isScanning.value = true;
   error.value = '';
   scanResults.value = [];
   
   try {
-    // 解析端口范围
-    const [start, end] = scanPorts.value.split('-').map(Number);
-    const ports = [];
-    
+    // 浏览器只能探测 HTTP/HTTPS 服务
     for (let port = start; port <= end; port++) {
-      ports.push(port);
-    }
-    
-    // 模拟端口扫描（实际浏览器限制，只能进行有限的测试）
-    for (const port of ports) {
+      const controller = trackController(new AbortController());
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
+      const startTime = Date.now();
+      let open = false;
+      
       try {
-        const startTime = Date.now();
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-        
-        // 尝试连接常见协议
         const protocols = ['http', 'https'];
-        let open = false;
-        
         for (const protocol of protocols) {
           try {
-            const response = await fetch(`${protocol}://${scanHost.value}:${port}`, {
+            await fetch(`${protocol}://${scanHost.value}:${port}`, {
               method: 'HEAD',
               signal: controller.signal,
               mode: 'no-cors'
@@ -301,22 +342,17 @@ const portScan = async () => {
             // 继续尝试下一个协议
           }
         }
-        
+      } catch {
+        // 单个端口探测失败不影响整体
+      } finally {
         clearTimeout(timeoutId);
-        
-        scanResults.value.push({
-          port: port,
-          open: open,
-          duration: Date.now() - startTime
-        });
-        
-      } catch (err) {
-        scanResults.value.push({
-          port: port,
-          open: false,
-          duration: 0
-        });
       }
+      
+      scanResults.value.push({
+        port: port,
+        open: open,
+        duration: Date.now() - startTime
+      });
     }
     
   } catch (err) {
@@ -326,32 +362,68 @@ const portScan = async () => {
   }
 };
 
-// DNS查询函数
+// DNS查询函数（DNS over HTTPS）
 const dnsLookup = async () => {
   if (!dnsQuery.value.trim()) return;
   
   isDnsQuerying.value = true;
   error.value = '';
   
+  const controller = trackController(new AbortController());
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const startTime = Date.now();
+  
   try {
-    const startTime = Date.now();
+    // 使用 URLSearchParams 构造查询参数，避免特殊字符破坏 URL
+    const params = new URLSearchParams({ name: dnsQuery.value.trim(), type: 'A' });
+    const response = await fetch(`https://dns.google/resolve?${params}`, {
+      signal: controller.signal
+    });
     
-    // 使用DNS over HTTPS进行查询
-    const response = await fetch(`https://dns.google/resolve?name=${dnsQuery.value}&type=A`);
+    if (!response.ok) {
+      throw new Error(`DNS 服务返回错误状态（HTTP ${response.status}${response.status === 429 ? '，请求过于频繁' : ''}）`);
+    }
+    
     const data = await response.json();
-    
     const duration = Date.now() - startTime;
-    const ip = data.Answer ? data.Answer[0]?.data : null;
     
-    dnsResults.value = {
-      domain: dnsQuery.value,
-      ip: ip,
-      duration: duration
-    };
+    if (data.Status === 3) {
+      // NXDOMAIN：域名不存在
+      dnsResults.value = {
+        domain: dnsQuery.value,
+        ip: null,
+        duration: duration,
+        status: 'not-found'
+      };
+    } else if (data.Answer && data.Answer.length > 0) {
+      const ips = data.Answer
+        .filter(item => item.type === 1)
+        .map(item => item.data);
+      dnsResults.value = {
+        domain: dnsQuery.value,
+        ip: ips[0] || null,
+        allIps: ips,
+        duration: duration,
+        status: 'ok'
+      };
+    } else {
+      dnsResults.value = {
+        domain: dnsQuery.value,
+        ip: null,
+        duration: duration,
+        status: 'no-record'
+      };
+    }
     
   } catch (err) {
-    error.value = `DNS查询失败: ${err.message}`;
+    if (err.name === 'AbortError') {
+      error.value = 'DNS 查询超时（8秒），请稍后重试';
+    } else {
+      error.value = `DNS查询失败: ${err.message}`;
+    }
+    dnsResults.value = null;
   } finally {
+    clearTimeout(timeoutId);
     isDnsQuerying.value = false;
   }
 };
@@ -382,7 +454,7 @@ onMounted(() => {
   }
 });
 
-// 组件卸载时移除监听
+// 组件卸载时移除监听并中断所有在途请求
 onUnmounted(() => {
   window.removeEventListener('online', updateOnlineStatus);
   window.removeEventListener('offline', updateOnlineStatus);
@@ -390,6 +462,9 @@ onUnmounted(() => {
   if (navigator.connection) {
     navigator.connection.removeEventListener('change', updateOnlineStatus);
   }
+  
+  activeControllers.forEach(controller => controller.abort());
+  activeControllers.clear();
 });
 </script>
 

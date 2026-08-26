@@ -50,7 +50,7 @@ export const useXmlFormatterStore = defineStore('xmlFormatter', () => {
     validationResult.value = null;
   };
 
-  // 格式化XML
+  // 格式化XML（基于 DOM 递归遍历，保护 CDATA/注释/混合内容）
   const formatXml = () => {
     try {
       if (!inputXml.value.trim()) {
@@ -67,20 +67,88 @@ export const useXmlFormatterStore = defineStore('xmlFormatter', () => {
         throw new Error('XML格式错误: ' + parseError[0].textContent);
       }
 
-      // 序列化XML
-      const serializer = new XMLSerializer();
-      let formattedXml = serializer.serializeToString(xmlDoc);
-
-      // 应用格式化选项
-      if (options.value.indent) {
-        formattedXml = prettyPrintXml(formattedXml, options.value.indentSize);
+      const indentSize = options.value.indentSize === 'tab' ? '\t' : ' '.repeat(Math.max(parseInt(options.value.indentSize, 10) || 2, 1));
+      
+      // 递归格式化节点
+      const formatNode = (node, depth) => {
+        const pad = indentSize.repeat(depth);
+        const lines = [];
+        
+        // 文本节点
+        if (node.nodeType === 3) { // TEXT_NODE
+          const text = node.nodeValue;
+          if (text.trim() !== '') {
+            lines.push(pad + text.trim());
+          }
+          return lines;
+        }
+        
+        // CDATA 节点
+        if (node.nodeType === 4) {
+          lines.push(pad + `<![CDATA[${node.nodeValue}]]>`);
+          return lines;
+        }
+        
+        // 注释节点
+        if (node.nodeType === 8) { // COMMENT_NODE
+          if (!options.value.removeComments) {
+            lines.push(pad + `<!--${node.nodeValue}-->`);
+          }
+          return lines;
+        }
+        
+        // 元素节点
+        const tagName = node.tagName;
+        const children = Array.from(node.childNodes);
+        const elementChildren = children.filter(c => c.nodeType === 1);
+        const hasTextContent = children.some(c => (c.nodeType === 3 || c.nodeType === 4) && c.nodeValue.trim() !== '');
+        
+        // 属性序列化（可选每属性换行）
+        const attrs = Array.from(node.attributes || []);
+        const attrStr = attrs.length > 0
+          ? ' ' + attrs.map(attr => `${attr.name}="${attr.value.replace(/"/g, '&quot;')}"`).join(' ')
+          : '';
+        
+        // 混合内容（既有文本又有子元素）：原样序列化，保持内容不变
+        if (hasTextContent && elementChildren.length > 0) {
+          const serializer = new XMLSerializer();
+          lines.push(pad + serializer.serializeToString(node));
+          return lines;
+        }
+        
+        // 空元素
+        if (elementChildren.length === 0 && !hasTextContent) {
+          if (options.value.selfClosing) {
+            lines.push(pad + `<${tagName}${attrStr}/>`);
+          } else {
+            lines.push(pad + `<${tagName}${attrStr}></${tagName}>`);
+          }
+          return lines;
+        }
+        
+        // 有子元素的节点
+        lines.push(pad + `<${tagName}${attrStr}>`);
+        for (const child of children) {
+          lines.push(...formatNode(child, depth + 1));
+        }
+        lines.push(pad + `</${tagName}>`);
+        return lines;
+      };
+      
+      const formattedLines = [];
+      // 处理 XML 声明和 DOCTYPE
+      const xmlDeclaration = inputXml.value.match(/^<\?xml[^>]*\?>/);
+      if (xmlDeclaration) {
+        formattedLines.push(xmlDeclaration[0]);
       }
-
-      if (options.value.removeComments) {
-        formattedXml = formattedXml.replace(/<!--[\s\S]*?-->/g, '');
+      const doctype = inputXml.value.match(/^<!DOCTYPE[^>]*>/i);
+      if (doctype) {
+        formattedLines.push(doctype[0]);
       }
-
-      outputXml.value = formattedXml;
+      
+      formattedLines.push(...formatNode(xmlDoc.documentElement, 0));
+      
+      outputXml.value = options.value.indent ? formattedLines.join('\n') : formattedLines.join('');
       validationResult.value = {
         isValid: true,
         message: 'XML格式正确，已成功格式化'
@@ -93,7 +161,7 @@ export const useXmlFormatterStore = defineStore('xmlFormatter', () => {
     }
   };
 
-  // 压缩XML
+  // 压缩XML（基于 DOM 删除纯空白文本节点，保留文本内容中的有意义空白）
   const compressXml = () => {
     try {
       if (!inputXml.value.trim()) {
@@ -110,15 +178,43 @@ export const useXmlFormatterStore = defineStore('xmlFormatter', () => {
         throw new Error('XML格式错误: ' + parseError[0].textContent);
       }
 
+      // 删除仅含空白的文本节点（格式化缩进），保留有意义的文本空白
+      const removeWhitespaceNodes = (node) => {
+        const children = Array.from(node.childNodes);
+        for (const child of children) {
+          if (child.nodeType === 3) { // TEXT_NODE
+            if (child.nodeValue.trim() === '') {
+              node.removeChild(child);
+            }
+          } else if (child.nodeType === 1) { // ELEMENT_NODE
+            removeWhitespaceNodes(child);
+          }
+        }
+      };
+      if (options.value.removeComments) {
+        const removeComments = (node) => {
+          const children = Array.from(node.childNodes);
+          for (const child of children) {
+            if (child.nodeType === 8) {
+              node.removeChild(child);
+            } else if (child.nodeType === 1) {
+              removeComments(child);
+            }
+          }
+        };
+        removeComments(xmlDoc.documentElement);
+      }
+      removeWhitespaceNodes(xmlDoc.documentElement);
+
       // 序列化XML
       const serializer = new XMLSerializer();
-      let compressedXml = serializer.serializeToString(xmlDoc);
-
-      // 移除多余的空白和换行
-      compressedXml = compressedXml.replace(/>\s+</g, '><');
-      compressedXml = compressedXml.replace(/^\s+|\s+$/gm, '');
-
-      outputXml.value = compressedXml;
+      const body = serializer.serializeToString(xmlDoc.documentElement);
+      
+      // 处理 XML 声明和 DOCTYPE（保留）
+      const declaration = inputXml.value.match(/^<\?xml[^>]*\?>/);
+      const doctype = inputXml.value.match(/^<!DOCTYPE[^>]*>/i);
+      
+      outputXml.value = (declaration ? declaration[0] : '') + (doctype ? doctype[0] : '') + body;
       validationResult.value = {
         isValid: true,
         message: 'XML格式正确，已成功压缩'
@@ -158,33 +254,6 @@ export const useXmlFormatterStore = defineStore('xmlFormatter', () => {
         message: error.message
       };
     }
-  };
-
-  // 美化XML
-  const prettyPrintXml = (xml, indentSize) => {
-    const PADDING = indentSize === 'tab' ? '\t' : ' '.repeat(parseInt(indentSize) || 2);
-    const reg = /(>)(<)(\/*)/g;
-    let pad = 0;
-    
-    xml = xml.replace(reg, '$1\r\n$2$3');
-    
-    return xml.split('\r\n').map((node) => {
-      let indent = 0;
-      if (node.match(/.+<\/\w[^>]*>$/)) {
-        indent = 0;
-      } else if (node.match(/^<\/\w/) && pad > 0) {
-        pad -= 1;
-      } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
-        indent = 1;
-      } else {
-        indent = 0;
-      }
-      
-      const padding = PADDING.repeat(pad);
-      pad += indent;
-      
-      return padding + node;
-    }).join('\r\n');
   };
 
   // 复制结果

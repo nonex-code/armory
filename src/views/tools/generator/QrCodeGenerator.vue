@@ -113,6 +113,13 @@
             <div class="flex gap-2">
               <button
                 v-if="hasQrCode"
+                @click="handleCopyQrCodeToClipboard"
+                class="btn btn-sm btn-ghost"
+              >
+                复制
+              </button>
+              <button
+                v-if="hasQrCode"
                 @click="handleDownloadQrCode"
                 class="btn btn-sm btn-primary"
               >
@@ -184,6 +191,7 @@
 import { storeToRefs } from 'pinia';
 import { useQrCodeGeneratorStore } from '@/store/modules/tools/generator/QrCodeGenerator';
 import { useToast } from '@/composables/useToast';
+import { watch } from 'vue';
 import toolService from '@/services/toolService';
 
 // 定义组件选项，确保keepalive能正常工作，并包含工具配置
@@ -268,4 +276,11 @@ const handleLoadExample = async () => {
     showToast(errorMessage.value || '加载示例失败', 'error');
   }
 };
+
+// 内容或选项变化后，旧二维码不再有效，需要重新生成
+watch([qrContent, qrOptions], () => {
+  if (store.hasQrCode && !isGenerating.value) {
+    store.clearQrCode();
+  }
+}, { deep: true });
 </script>

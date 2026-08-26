@@ -447,7 +447,7 @@ watch(searchQuery, searchTools);
       <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div class="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
           <div class="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
-            © 2025 armory - 为开发者打造的实用工具集合
+            © {{ new Date().getFullYear() }} armory - 为开发者打造的实用工具集合
           </div>
           <div class="flex flex-wrap justify-center gap-3 sm:gap-4 text-xs sm:text-sm">
             <!-- 关于路由 -->

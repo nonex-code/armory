@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8"/>
+	<title>页面跳转中 - armory</title>
+	<script>
+		// GitHub Pages 单页应用回退：
+		// 直接访问子路由（如 /tools/json-formatter）时服务器返回本页，
+		// 将原始地址暂存后跳回首页，由 index.html 恢复并交给前端路由处理。
+		(function () {
+			try {
+				sessionStorage.setItem('spa-redirect', window.location.href);
+			} catch (e) { /* ignore */ }
+			window.location.replace('/');
+		})();
+	</script>
+</head>
+<body>
+	<p>正在跳转到 <a href="/">armory 首页</a>...</p>
+</body>
+</html>

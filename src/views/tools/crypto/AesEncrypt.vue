@@ -144,10 +144,9 @@
               <option value="CFB">CFB (密码反馈模式)</option>
               <option value="OFB">OFB (输出反馈模式)</option>
               <option value="CTR">CTR (计数器模式)</option>
-              <option value="GCM">GCM (伽罗瓦/计数器模式)</option>
             </select>
             <label class="label">
-              <span class="label-text-alt">推荐使用CBC或GCM模式</span>
+              <span class="label-text-alt">推荐使用CBC模式；ECB安全性较低，不建议用于敏感数据</span>
             </label>
           </div>
           
@@ -250,7 +249,7 @@
                 </button>
               </div>
               <label class="label">
-                <span class="label-text-alt">{{ mode === 'GCM' ? '12字节(96位)' : '16字节(128位)' }}</span>
+                <span class="label-text-alt">16字节(128位)</span>
               </label>
             </div>
             
@@ -270,7 +269,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <div class="text-sm">
                 <p class="font-medium">IV说明：</p>
-                <p>初始化向量(IV)用于增加加密的随机性。在CBC、CFB、OFB、CTR和GCM模式下需要IV。IV不需要保密，但每次加密应使用不同的IV。本工具会将IV附加到密文前面，解密时自动提取。</p>
+                <p>初始化向量(IV)用于增加加密的随机性。在CBC、CFB、OFB、CTR模式下需要IV。IV不需要保密，但每次加密应使用不同的IV。本工具会将IV附加到密文前面，解密时自动提取。</p>
               </div>
             </div>
           </div>
@@ -341,13 +340,6 @@
                     <li>流密码模式，需要IV</li>
                     <li>适合流数据加密</li>
                     <li>CTR支持并行处理</li>
-                  </ul>
-                </li>
-                <li><strong>GCM (伽罗瓦/计数器模式)：</strong>
-                  <ul class="list-disc list-inside ml-4">
-                    <li>认证加密，提供数据完整性验证</li>
-                    <li>推荐用于网络通信</li>
-                    <li>IV长度通常为12字节</li>
                   </ul>
                 </li>
               </ul>

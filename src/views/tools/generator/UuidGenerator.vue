@@ -208,7 +208,7 @@ defineOptions({
       id: 'uuid-generator',
       name: 'UUID生成器',
       description: 'UUID生成工具，支持生成多种版本的UUID标识符',
-      icon: '🎨',
+      icon: '🆔',
       category: 'generator',
       tags: ['uuid', '生成', '标识符', '唯一', '随机', '内容生成'],
       enabled: true,
@@ -240,7 +240,7 @@ const {
 } = uuidGeneratorStore;
 
 // Toast提示
-const { showSuccessToast, showErrorToast } = useToast();
+const { success: showSuccessToast, error: showErrorToast } = useToast();
 
 // 带提示功能的包装方法
 const handleGenerateUuids = async () => {

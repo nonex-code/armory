@@ -21,6 +21,11 @@ export const useTabsStore = defineStore('tabs', () => {
     return route.fullPath;
   };
   
+  // 判断是否为首页路由（路由 name 为 'Home'，注入的首页标签 name 为 'home'，统一大小写比较）
+  const isHomeRoute = (routeOrTab) => {
+    return routeOrTab?.name && String(routeOrTab.name).toLowerCase() === 'home';
+  };
+  
   // 添加或更新选项卡
   const addOrUpdateTab = (route, componentInstance = null) => {
     const tabKey = getTabKey(route);
@@ -34,20 +39,20 @@ export const useTabsStore = defineStore('tabs', () => {
         path: route.fullPath,
         name: route.name,
         icon: getMenuIcon(route.path),
-        closable: route.name !== 'home', // 首页不可关闭
+        closable: !isHomeRoute(route), // 首页不可关闭
         createdAt: Date.now()
       };
       
       // 如果是首页，确保它在第一位
-      if (route.name === 'home') {
+      if (isHomeRoute(route)) {
         // 检查首页是否已存在
-        const homeIndex = tabs.value.findIndex(tab => tab.name === 'home');
+        const homeIndex = tabs.value.findIndex(tab => isHomeRoute(tab));
         if (homeIndex === -1) {
           tabs.value.unshift(newTab);
         }
       } else {
         // 如果首页不存在，先添加首页
-        const homeIndex = tabs.value.findIndex(tab => tab.name === 'home');
+        const homeIndex = tabs.value.findIndex(tab => isHomeRoute(tab));
         if (homeIndex === -1) {
           tabs.value.unshift({
             key: '/',
@@ -325,7 +330,7 @@ export const useTabsStore = defineStore('tabs', () => {
       activeTab.value = tabsState.activeTab;
       
       // 确保首页存在且在第一位
-      const homeIndex = tabs.value.findIndex(tab => tab.name === 'home');
+      const homeIndex = tabs.value.findIndex(tab => isHomeRoute(tab));
       if (homeIndex === -1) {
         // 如果首页不存在，添加到第一位
         tabs.value.unshift({

@@ -235,6 +235,22 @@ const iconNameMap = {
   // 对齐相关
   'align-left': () => import('@heroicons/vue/24/outline/Bars3Icon'),
   
+  // 补充图标（此前缺失，回退到默认图标）
+  'trash': () => import('@heroicons/vue/24/outline/TrashIcon'),
+  'arrow-up': () => import('@heroicons/vue/24/outline/ArrowUpIcon'),
+  'arrow-down': () => import('@heroicons/vue/24/outline/ArrowDownIcon'),
+  'play': () => import('@heroicons/vue/24/outline/PlayIcon'),
+  'wifi': () => import('@heroicons/vue/24/outline/WifiIcon'),
+  'globe': () => import('@heroicons/vue/24/outline/GlobeAltIcon'),
+  'radar': () => import('@heroicons/vue/24/outline/RadioIcon'),
+  'volume-up': () => import('@heroicons/vue/24/outline/SpeakerWaveIcon'),
+  'clipboard': () => import('@heroicons/vue/24/outline/ClipboardDocumentIcon'),
+  'paper-plane': () => import('@heroicons/vue/24/outline/PaperAirplaneIcon'),
+  'rocket': () => import('@heroicons/vue/24/outline/RocketLaunchIcon'),
+  'bolt': () => import('@heroicons/vue/24/outline/BoltIcon'),
+  'academic-cap': () => import('@heroicons/vue/24/outline/AcademicCapIcon'),
+  'shield': () => import('@heroicons/vue/24/outline/ShieldCheckIcon'),
+  
   // 设置相关
   'cog-6-tooth': () => import('@heroicons/vue/24/outline/Cog6ToothIcon'),
   'photo': () => import('@heroicons/vue/24/outline/PhotoIcon'),
